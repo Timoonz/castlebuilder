@@ -1,5 +1,5 @@
 "use strict";
-import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, MeshNormalMaterial, AmbientLight, Clock, Group, Fog, Color, PlaneGeometry, Vector3, MeshBasicMaterial, PointLight } from 'three';
+import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLight, Clock, Group, MeshStandardMaterial, Fog, Color, PlaneGeometry, Vector3, PointLight } from 'three';
 import { Body, Box, Plane, Vec3, World, } from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -19,7 +19,11 @@ function createFloor() {
     // new ShadowMaterial({
     //     opacity: .1,
     // })
-    new MeshNormalMaterial());
+    new MeshStandardMaterial({
+        color: 0xF0ccc0,
+        roughness: 0.8,
+        metalness: 0.2
+    }));
     floor.receiveShadow = true;
     floor.position.y = -7;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
@@ -36,7 +40,7 @@ function createFloor() {
 function createCube() {
     var cubeGroup = new Group();
     var cubeGeometry = new BoxGeometry(2.0, 2.0, 2.0);
-    var cubeMaterial = new MeshBasicMaterial({ color: 0x0095dd });
+    var cubeMaterial = new MeshStandardMaterial({ color: 0x0095dd });
     var cube = new Mesh(cubeGeometry, cubeMaterial);
     cube.castShadow = true;
     var cubeBody = new Body({
@@ -58,15 +62,15 @@ function init() {
     scene = new Scene();
     scene.background = new Color().setHSL(0.6, 0, 1);
     scene.fog = new Fog(scene.background, 1, 5000);
-    var ambientLight = new AmbientLight(0xffffff, .5);
+    var ambientLight = new AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
-    var topLight = new PointLight(0xffffff, .5);
+    var topLight = new PointLight(0xffffff, 500);
     topLight.position.set(10, 15, 0);
     topLight.castShadow = true;
     topLight.shadow.mapSize.width = 2048;
     topLight.shadow.mapSize.height = 2048;
-    topLight.shadow.camera.near = 5;
-    topLight.shadow.camera.far = 400;
+    topLight.shadow.camera.near = 0.5;
+    topLight.shadow.camera.far = 50;
     scene.add(topLight);
     // RENDERER
     renderer = new WebGLRenderer({ antialias: true });
@@ -98,7 +102,7 @@ function gltfReader(gltf) {
 // loadData();
 var clock = new Clock();
 var lastSpawnTime = 0;
-var spawnInterval = 10;
+var spawnInterval = 5;
 function render() {
     physicsWorld.fixedStep();
     var currentTime = clock.getElapsedTime();

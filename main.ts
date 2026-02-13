@@ -59,8 +59,6 @@ let physicsWorld = new World({
   gravity: new Vec3(0, -50, 0),
 })
 
-
-
 function createFloor() {
     
     // Three.js (visible) object
@@ -69,7 +67,11 @@ function createFloor() {
         // new ShadowMaterial({
         //     opacity: .1,
         // })
-        new MeshNormalMaterial()
+        new MeshStandardMaterial({ 
+          color: 0xF0ccc0,
+          roughness: 0.8,
+          metalness: 0.2 
+        })
     )
     floor.receiveShadow = true;
     floor.position.y = -7;
@@ -89,7 +91,7 @@ function createFloor() {
 function createCube () {
   const cubeGroup = new Group();
   const cubeGeometry = new BoxGeometry(2.0, 2.0, 2.0);
-  const cubeMaterial = new MeshBasicMaterial({ color: 0x0095dd });
+  const cubeMaterial = new MeshStandardMaterial({ color: 0x0095dd });
   const cube = new Mesh(cubeGeometry, cubeMaterial);
 
   cube.castShadow = true;
@@ -123,15 +125,16 @@ function init () {
 	scene.background = new Color().setHSL( 0.6, 0, 1 );
 	scene.fog = new Fog( scene.background, 1, 5000 );
 
-  const ambientLight = new AmbientLight(0xffffff, .5);
+  const ambientLight = new AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
-  const topLight = new PointLight(0xffffff, .5);
+  
+  const topLight = new PointLight(0xffffff, 500);
   topLight.position.set(10, 15, 0);
   topLight.castShadow = true;
   topLight.shadow.mapSize.width = 2048;
   topLight.shadow.mapSize.height = 2048;
-  topLight.shadow.camera.near = 5;
-  topLight.shadow.camera.far = 400;
+  topLight.shadow.camera.near = 0.5;
+  topLight.shadow.camera.far = 50;
   scene.add(topLight);
 
 
@@ -174,7 +177,7 @@ function gltfReader(gltf : GLTF) {
 
 const clock = new Clock();
 let lastSpawnTime = 0; 
-const spawnInterval = 10;
+const spawnInterval = 5;
 
 function render () {
   physicsWorld.fixedStep();
