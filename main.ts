@@ -93,7 +93,7 @@ function createFloor() {
         })
     )
     floor.receiveShadow = true;
-    floor.position.y = -7;
+    floor.position.y = -5;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
     scene.add(floor);
 
@@ -177,9 +177,9 @@ function init () {
 
 	window.addEventListener( 'keydown', ( event ) => {
 
-		if (event.key === 'ArrowUp' ) spawnPointPosition.z += 1;
-		if (event.key === 'ArrowDown' ) spawnPointPosition.z += - 1;
-		if (event.key === 'ArrowLeft' ) spawnPointPosition.x += - 1;
+		if (event.key === 'ArrowUp' ) spawnPointPosition.z += - 1;
+		if (event.key === 'ArrowDown' ) spawnPointPosition.z += 1;
+		if (event.key === 'ArrowLeft' ) spawnPointPosition.x +=  - 1;
 		if (event.key === 'ArrowRight' ) spawnPointPosition.x += 1;
 
     updateSpawnPoint(scene.getObjectByName("spawnPoint"));

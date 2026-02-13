@@ -40,7 +40,7 @@ function createFloor() {
         metalness: 0.2
     }));
     floor.receiveShadow = true;
-    floor.position.y = -7;
+    floor.position.y = -5;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
     scene.add(floor);
     // Cannon-es (physical) object
@@ -100,19 +100,15 @@ function init() {
     fallingCubeMovement = { forward: 0, right: 0 };
     window.addEventListener('keydown', function (event) {
         if (event.key === 'ArrowUp')
-            spawnPointPosition.z += 1;
-        if (event.key === 'ArrowDown')
             spawnPointPosition.z += -1;
+        if (event.key === 'ArrowDown')
+            spawnPointPosition.z += 1;
         if (event.key === 'ArrowLeft')
             spawnPointPosition.x += -1;
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
         updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     });
-    // window.addEventListener( 'keyup', ( event ) => {
-    //   if (event.key === 'ArrowUp' || event.key === 'ArrowDown' ) fallingCubeMovement.forward = 0;
-    //   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' ) fallingCubeMovement.right = 0;
-    // } );
     createFloor();
     createSpawnPoint();
 }
