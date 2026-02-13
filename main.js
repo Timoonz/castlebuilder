@@ -4,15 +4,30 @@ import { Body, Box, Plane, Vec3, World, } from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 var camera, scene, renderer;
-// Liste de cubes
+// Le cube qui tombe
 var fallingCube;
+var fallingCubeMovement;
+// Liste des cubes stackés
 var stackedCubes = [];
 // Le point où nos cubes vons spawner
-var spawnPointVec3 = new Vec3(0, 5, 0);
+var spawnPointPosition = new Vec3(0, 10, 0);
 // Le monde physique
 var physicsWorld = new World({
-    gravity: new Vec3(0, -50, 0),
+    gravity: new Vec3(0, -5, 0),
 });
+function createSpawnPoint() {
+    var spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
+    var spawnPointMaterial = new MeshStandardMaterial({ color: 0xb20000 });
+    var spawnPoint = new Mesh(spawnPointGeom, spawnPointMaterial);
+    spawnPoint.name = "spawnPoint";
+    spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
+    var spawnPointGroup = new Group();
+    spawnPointGroup.add(spawnPoint);
+    scene.add(spawnPointGroup);
+}
+function updateSpawnPoint(spawnPoint) {
+    spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
+}
 function createFloor() {
     // Three.js (visible) object
     var floor = new Mesh(new PlaneGeometry(1000, 1000), 
@@ -48,7 +63,7 @@ function createCube() {
         shape: new Box(new Vec3(1.0, 1.0, 1.0)),
         sleepTimeLimit: .1
     });
-    cubeBody.position.copy(spawnPointVec3);
+    cubeBody.position.copy(spawnPointPosition);
     cubeGroup.position.copy(cubeBody.position);
     physicsWorld.addBody(cubeBody);
     cubeGroup.add(cube);
@@ -80,8 +95,26 @@ function init() {
     container.appendChild(renderer.domElement);
     // CONTROLS
     var controls = new OrbitControls(camera, renderer.domElement);
-    controls.listenToKeyEvents(window); // optional
+    // controls.listenToKeyEvents(window); // optional
+    // FALLING BLOCK CONTROLS
+    fallingCubeMovement = { forward: 0, right: 0 };
+    window.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowUp')
+            spawnPointPosition.z += 1;
+        if (event.key === 'ArrowDown')
+            spawnPointPosition.z += -1;
+        if (event.key === 'ArrowLeft')
+            spawnPointPosition.x += -1;
+        if (event.key === 'ArrowRight')
+            spawnPointPosition.x += 1;
+        updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+    });
+    // window.addEventListener( 'keyup', ( event ) => {
+    //   if (event.key === 'ArrowUp' || event.key === 'ArrowDown' ) fallingCubeMovement.forward = 0;
+    //   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' ) fallingCubeMovement.right = 0;
+    // } );
     createFloor();
+    createSpawnPoint();
 }
 function loadData() {
     new GLTFLoader()

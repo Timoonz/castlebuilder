@@ -47,17 +47,36 @@ import {
 
 let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
 
-// Liste de cubes
+// Le cube qui tombe
 let fallingCube: {cubeGroup: Group, cubeBody: Body};
+let fallingCubeMovement: { forward: any; right: any; };
+// Liste des cubes stackés
 let stackedCubes: Array<{cubeGroup: Group, cubeBody: Body}> = [];
 
 // Le point où nos cubes vons spawner
-let spawnPointVec3 = new Vec3(0, 5, 0);
+let spawnPointPosition = new Vec3(0, 10, 0);
 
 // Le monde physique
 let physicsWorld = new World({
-  gravity: new Vec3(0, -50, 0),
+  gravity: new Vec3(0, -5, 0),
 })
+
+function createSpawnPoint() {
+  const spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
+  const spawnPointMaterial = new MeshStandardMaterial({ color: 0xb20000 });
+  const spawnPoint = new Mesh(spawnPointGeom, spawnPointMaterial);
+  
+  spawnPoint.name = "spawnPoint";
+  spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
+  
+  const spawnPointGroup = new Group();
+  spawnPointGroup.add(spawnPoint);
+  scene.add(spawnPointGroup);
+}
+
+function updateSpawnPoint(spawnPoint: any){
+  spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
+}
 
 function createFloor() {
     
@@ -103,7 +122,7 @@ function createCube () {
   });
   
 
-  cubeBody.position.copy(spawnPointVec3);
+  cubeBody.position.copy(spawnPointPosition);
   cubeGroup.position.copy(cubeBody.position as any);
   
   physicsWorld.addBody(cubeBody);
@@ -149,9 +168,26 @@ function init () {
   // CONTROLS
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.listenToKeyEvents(window); // optional
+  // controls.listenToKeyEvents(window); // optional
+
+
+  // FALLING BLOCK CONTROLS
+
+  fallingCubeMovement = { forward: 0, right: 0 };
+
+	window.addEventListener( 'keydown', ( event ) => {
+
+		if (event.key === 'ArrowUp' ) spawnPointPosition.z += 1;
+		if (event.key === 'ArrowDown' ) spawnPointPosition.z += - 1;
+		if (event.key === 'ArrowLeft' ) spawnPointPosition.x += - 1;
+		if (event.key === 'ArrowRight' ) spawnPointPosition.x += 1;
+
+    updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+			
+	} );
 
   createFloor();
+  createSpawnPoint();
 }
 
 function loadData() {
@@ -210,6 +246,9 @@ function render () {
 
 init();
 render();
+
+
+
 
 
 
