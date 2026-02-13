@@ -15,13 +15,14 @@
   },
   "devDependencies": {
     "@types/three": "^0.182.0",
-    "typescript": "^5.9.3",
     "http-server": "^14.1.1",
+    "typescript": "^5.9.3",
     "vite": "^6.4.1",
     "vite-plugin-glsl": "^0.4.0",
     "vite-plugin-static-copy": "^2.3.2"
   },
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "three": "^0.182.0"
   }
 }

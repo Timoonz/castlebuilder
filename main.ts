@@ -1,12 +1,5 @@
 "use strict";
 
-// ⚠️ DO NOT EDIT main.js DIRECTLY ⚠️
-// This file is generated from the TypeScript source main.ts
-// Any changes made here will be overwritten.
-
-// Import only what you need, to help your bundler optimize final code size using tree shaking
-// see https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)
-
 import {
   PerspectiveCamera,
   Scene,
@@ -21,28 +14,28 @@ import {
   MeshStandardMaterial,
   MeshPhongMaterial,
   Object3DEventMap,
-  Object3D
+  Object3D,
+  Camera,
+  HemisphereLight,
+  Fog,
+  Color,
+  DirectionalLight,
+  PlaneGeometry,
+  ShadowMaterial,
+  Vector3,
+  MeshBasicMaterial,
+  PointLight
 } from 'three';
 
-// If you prefer to import the whole library, with the THREE prefix, use the following line instead:
-// import * as THREE from 'three'
+import {
+  Body,
+  Box,
+  Plane,
+  Vec3,
+  World,
 
-// NOTE: three/addons alias is supported by Rollup: you can use it interchangeably with three/examples/jsm/  
+} from 'cannon-es'
 
-// Importing Ammo can be tricky.
-// Vite supports webassembly: https://vitejs.dev/guide/features.html#webassembly
-// so in theory this should work:
-//
-// import ammoinit from 'three/addons/libs/ammo.wasm.js?init';
-// ammoinit().then((AmmoLib) => {
-//  Ammo = AmmoLib.exports.Ammo()
-// })
-//
-// But the Ammo lib bundled with the THREE js examples does not seem to export modules properly.
-// A solution is to treat this library as a standalone file and copy it using 'vite-plugin-static-copy'.
-// See vite.config.js
-// 
-// Consider using alternatives like Oimo or cannon-es
 import {
   OrbitControls
 } from 'three/addons/controls/OrbitControls.js';
@@ -52,61 +45,111 @@ import {
   GLTFLoader
 } from 'three/addons/loaders/GLTFLoader.js';
 
-// Example of hard link to official repo for data, if needed
-// const MODEL_PATH = 'https://raw.githubusercontent.com/mrdoob/three.js/r173/examples/models/gltf/LeePerrySmith/LeePerrySmith.glb';
+let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
+
+// Liste de cubes
+let fallingCube: {cubeGroup: Group, cubeBody: Body};
+let stackedCubes: Array<{cubeGroup: Group, cubeBody: Body}> = [];
+
+// Le point où nos cubes vons spawner
+let spawnPointVec3 = new Vec3(0, 5, 0);
+
+// Le monde physique
+let physicsWorld = new World({
+  gravity: new Vec3(0, -50, 0),
+})
 
 
-// INSERT CODE HERE
 
-// Les objets qui vont tourner
-const objects: Mesh<SphereGeometry, MeshPhongMaterial, Object3DEventMap>[] = [];
+function createFloor() {
+    
+    // Three.js (visible) object
+    const floor = new Mesh(
+        new PlaneGeometry(1000, 1000),
+        // new ShadowMaterial({
+        //     opacity: .1,
+        // })
+        new MeshNormalMaterial()
+    )
+    floor.receiveShadow = true;
+    floor.position.y = -7;
+    floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
+    scene.add(floor);
+
+    // Cannon-es (physical) object
+    const floorBody = new Body({
+        type: Body.STATIC,
+        shape: new Plane(),
+    });
+    floorBody.position.set(floor.position.x, floor.position.y, floor.position.z);
+    floorBody.quaternion.set(floor.quaternion.x, floor.quaternion.y, floor.quaternion.z, floor.quaternion.w);
+    physicsWorld.addBody(floorBody);
+}
+
+function createCube () {
+  const cubeGroup = new Group();
+  const cubeGeometry = new BoxGeometry(2.0, 2.0, 2.0);
+  const cubeMaterial = new MeshBasicMaterial({ color: 0x0095dd });
+  const cube = new Mesh(cubeGeometry, cubeMaterial);
+
+  cube.castShadow = true;
+
+  const cubeBody = new Body({
+      mass: 1,
+      shape: new Box(new Vec3(1.0, 1.0, 1.0)),
+      sleepTimeLimit: .1
+  });
+  
+
+  cubeBody.position.copy(spawnPointVec3);
+  cubeGroup.position.copy(cubeBody.position as any);
+  
+  physicsWorld.addBody(cubeBody);
+  
+  cubeGroup.add(cube);
+  scene.add(cubeGroup);
+
+  return {cubeGroup, cubeBody}
+}
+
+function init () {
+
+  const container = document.getElementById( 'container' );
+
+	camera = new PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 1, 5000 );
+	camera.position.set( 10, 30, 50 );
+
+	scene = new Scene();
+	scene.background = new Color().setHSL( 0.6, 0, 1 );
+	scene.fog = new Fog( scene.background, 1, 5000 );
+
+  const ambientLight = new AmbientLight(0xffffff, .5);
+  scene.add(ambientLight);
+  const topLight = new PointLight(0xffffff, .5);
+  topLight.position.set(10, 15, 0);
+  topLight.castShadow = true;
+  topLight.shadow.mapSize.width = 2048;
+  topLight.shadow.mapSize.height = 2048;
+  topLight.shadow.camera.near = 5;
+  topLight.shadow.camera.far = 400;
+  scene.add(topLight);
 
 
-const scene = new Scene();
-const aspect = window.innerWidth / window.innerHeight;
-const camera = new PerspectiveCamera(75, aspect, 0.1, 1000);
+  // RENDERER
+  renderer = new WebGLRenderer( { antialias: true } );
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.shadowMap.enabled = true;
+  container!.appendChild( renderer.domElement );
 
-const light = new AmbientLight(0xffffff, 1.0); // soft white light
-scene.add(light);
 
-const renderer = new WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+  // CONTROLS
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.listenToKeyEvents(window); // optional
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.listenToKeyEvents(window); // optional
 
-// HERE COMES THE SUN
-const sunOrbit = new Object3D();
-const sunGeometry = new SphereGeometry(3.6, 32, 16)
-const sunMaterial = new MeshPhongMaterial({emissive: 0xFFD140});
-const sun = new Mesh(sunGeometry, sunMaterial);
-sunOrbit.add(sun);
-objects.push(sun);
-
-// MOTHER EARTH
-const earthOrbit = new Object3D();
-sunOrbit.add(earthOrbit);
-const earthGeometry = new SphereGeometry(1.6, 32, 16);
-const earthMaterial = new MeshPhongMaterial({color: 0x2233FF, emissive: 0x112244});
-const earth = new Mesh(earthGeometry, earthMaterial);
-earthOrbit.add(earth);
-objects.push(earth);
-
-earthOrbit.position.x = 9;
-
-// BARK AT THE MOON
-const moonOrbit = new Object3D();
-earthOrbit.add(moonOrbit);
-const moonGeometry = new SphereGeometry(0.5, 32, 16);
-const moonMaterial = new MeshPhongMaterial({emissive: 0x677179});
-const moon = new Mesh(moonGeometry, moonMaterial);
-moonOrbit.add(moon);
-objects.push(moon);
-
-moon.position.x = 4;
-
-scene.add(sunOrbit);
+  createFloor();
+}
 
 function loadData() {
   new GLTFLoader()
@@ -129,51 +172,41 @@ function gltfReader(gltf : GLTF) {
 
 // loadData();
 
-
-camera.position.z = 25;
-
-
 const clock = new Clock();
+let lastSpawnTime = 0; 
+const spawnInterval = 10;
 
-// Main loop
-// const animation = () => {
+function render () {
+  physicsWorld.fixedStep();
 
-//   renderer.setAnimationLoop(animation); // requestAnimationFrame() replacement, compatible with XR 
+  const currentTime = clock.getElapsedTime();
 
-//   const delta = clock.getDelta();
-//   const elapsed = clock.getElapsedTime();
-
-//   // can be used in shaders: uniforms.u_time.value = elapsed;
-
-//   objects.forEach((obj) => {
-//     obj.rotation.y = elapsed;
-//   });
-
-//   renderer.render(scene, camera);
-// };
-
-// animation();
-
-  function render( time: number ) {
-    time *= 0.002;
-
-		// objects.forEach( ( obj ) => {
-
-		// 	obj.rotation.y = time;
-
-		// } );
-
-    sunOrbit.rotation.y = time * 0.2;      
-    earthOrbit.rotation.y = time * 1.0;    
-    moonOrbit.rotation.y = time * 2.0;     
-
-		renderer.render( scene, camera );
-
-		requestAnimationFrame( render );
-
+  if (currentTime - lastSpawnTime >= spawnInterval) {
+    if (fallingCube) {
+      stackedCubes.push(fallingCube);
+    }
+    fallingCube = createCube();
+    lastSpawnTime = currentTime;
   }
 
-requestAnimationFrame( render );
+  if (fallingCube) {
+    fallingCube.cubeGroup.position.copy(fallingCube.cubeBody.position as any);
+    fallingCube.cubeGroup.quaternion.copy(fallingCube.cubeBody.quaternion as any);
+  }
+
+
+  // Update all cubes to match their physics bodies
+  stackedCubes.forEach(({cubeGroup, cubeBody}) => {
+    cubeGroup.position.copy(cubeBody.position as any);
+    cubeGroup.quaternion.copy(cubeBody.quaternion as any);
+  });
+
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+init();
+render();
 
 
 
