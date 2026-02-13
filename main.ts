@@ -33,7 +33,6 @@ import {
   Plane,
   Vec3,
   World,
-
 } from 'cannon-es'
 
 import {
@@ -49,17 +48,16 @@ let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRe
 
 // Le cube qui tombe
 let fallingCube: {cubeGroup: Group, cubeBody: Body};
-let fallingCubeMovement: { forward: any; right: any; };
 // Liste des cubes stackés
 let stackedCubes: Array<{cubeGroup: Group, cubeBody: Body}> = [];
 
-// Le point où nos cubes vons spawner
+// Le point où nos cubes vont spawner
 let spawnPointPosition = new Vec3(0, 10, 0);
 
 // Le monde physique
 let physicsWorld = new World({
   gravity: new Vec3(0, -5, 0),
-})
+});
 
 function createSpawnPoint() {
   const spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
@@ -80,24 +78,19 @@ function updateSpawnPoint(spawnPoint: any){
 
 function createFloor() {
     
-    // Three.js (visible) object
-    const floor = new Mesh(
-        new PlaneGeometry(1000, 1000),
-        // new ShadowMaterial({
-        //     opacity: .1,
-        // })
-        new MeshStandardMaterial({ 
-          color: 0xF0ccc0,
-          roughness: 0.8,
-          metalness: 0.2 
-        })
-    )
+  const floor = new Mesh(
+    new PlaneGeometry(1000, 1000),
+    new MeshStandardMaterial({ 
+        color: 0xF0ccc0,
+        roughness: 0.8,
+        metalness: 0.2 
+      })
+    );
     floor.receiveShadow = true;
     floor.position.y = -5;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
     scene.add(floor);
 
-    // Cannon-es (physical) object
     const floorBody = new Body({
         type: Body.STATIC,
         shape: new Plane(),
@@ -157,7 +150,7 @@ function init () {
   scene.add(topLight);
 
 
-  // RENDERER
+  // Le renderer
   renderer = new WebGLRenderer( { antialias: true } );
   renderer.setPixelRatio( window.devicePixelRatio );
   renderer.setSize( window.innerWidth, window.innerHeight );
@@ -165,16 +158,10 @@ function init () {
   container!.appendChild( renderer.domElement );
 
 
-  // CONTROLS
-
+  // Contrôles de la caméra
   const controls = new OrbitControls(camera, renderer.domElement);
-  // controls.listenToKeyEvents(window); // optional
 
-
-  // FALLING BLOCK CONTROLS
-
-  fallingCubeMovement = { forward: 0, right: 0 };
-
+  // Contrôles du spawn point
 	window.addEventListener( 'keydown', ( event ) => {
 
 		if (event.key === 'ArrowUp' ) spawnPointPosition.z += - 1;
@@ -186,6 +173,7 @@ function init () {
 			
 	} );
 
+  // On crée nos objets
   createFloor();
   createSpawnPoint();
 }
@@ -246,10 +234,6 @@ function render () {
 
 init();
 render();
-
-
-
-
 
 
 window.addEventListener('resize', onWindowResize, false);
