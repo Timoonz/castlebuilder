@@ -76,6 +76,10 @@ function updateSpawnPoint(spawnPoint: any){
   spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
 
+function createPlatform() {
+  new PlaneGeometry();
+}
+
 function createFloor() {
     
   const floor = new Mesh(

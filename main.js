@@ -6,10 +6,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 var camera, scene, renderer;
 // Le cube qui tombe
 var fallingCube;
-var fallingCubeMovement;
 // Liste des cubes stackés
 var stackedCubes = [];
-// Le point où nos cubes vons spawner
+// Le point où nos cubes vont spawner
 var spawnPointPosition = new Vec3(0, 10, 0);
 // Le monde physique
 var physicsWorld = new World({
@@ -28,13 +27,11 @@ function createSpawnPoint() {
 function updateSpawnPoint(spawnPoint) {
     spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
+function createPlatform() {
+    new PlaneGeometry();
+}
 function createFloor() {
-    // Three.js (visible) object
-    var floor = new Mesh(new PlaneGeometry(1000, 1000), 
-    // new ShadowMaterial({
-    //     opacity: .1,
-    // })
-    new MeshStandardMaterial({
+    var floor = new Mesh(new PlaneGeometry(1000, 1000), new MeshStandardMaterial({
         color: 0xF0ccc0,
         roughness: 0.8,
         metalness: 0.2
@@ -43,7 +40,6 @@ function createFloor() {
     floor.position.y = -5;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
     scene.add(floor);
-    // Cannon-es (physical) object
     var floorBody = new Body({
         type: Body.STATIC,
         shape: new Plane(),
@@ -87,17 +83,15 @@ function init() {
     topLight.shadow.camera.near = 0.5;
     topLight.shadow.camera.far = 50;
     scene.add(topLight);
-    // RENDERER
+    // Le renderer
     renderer = new WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
-    // CONTROLS
+    // Contrôles de la caméra
     var controls = new OrbitControls(camera, renderer.domElement);
-    // controls.listenToKeyEvents(window); // optional
-    // FALLING BLOCK CONTROLS
-    fallingCubeMovement = { forward: 0, right: 0 };
+    // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
         if (event.key === 'ArrowUp')
             spawnPointPosition.z += -1;
@@ -109,6 +103,7 @@ function init() {
             spawnPointPosition.x += 1;
         updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     });
+    // On crée nos objets
     createFloor();
     createSpawnPoint();
 }
