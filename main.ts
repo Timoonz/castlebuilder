@@ -6,24 +6,15 @@ import {
   WebGLRenderer,
   BoxGeometry,
   Mesh,
-  MeshNormalMaterial,
   AmbientLight,
   Clock,
   Group,
-  SphereGeometry,
   MeshStandardMaterial,
-  MeshPhongMaterial,
   Object3DEventMap,
-  Object3D,
-  Camera,
-  HemisphereLight,
   Fog,
   Color,
-  DirectionalLight,
   PlaneGeometry,
-  ShadowMaterial,
   Vector3,
-  MeshBasicMaterial,
   PointLight
 } from 'three';
 
@@ -47,9 +38,9 @@ import {
 let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
 
 // Le cube qui tombe
-let fallingCube: {cubeGroup: Group, cubeBody: Body};
+let fallingCube: { cubeGroup: Group, cubeBody: Body };
 // Liste des cubes stackés
-let stackedCubes: Array<{cubeGroup: Group, cubeBody: Body}> = [];
+let stackedCubes: Array<{ cubeGroup: Group, cubeBody: Body }> = [];
 
 // Le point où nos cubes vont spawner
 let spawnPointPosition = new Vec3(0, 10, 0);
@@ -63,16 +54,16 @@ function createSpawnPoint() {
   const spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
   const spawnPointMaterial = new MeshStandardMaterial({ color: 0xb20000 });
   const spawnPoint = new Mesh(spawnPointGeom, spawnPointMaterial);
-  
+
   spawnPoint.name = "spawnPoint";
   spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
-  
+
   const spawnPointGroup = new Group();
   spawnPointGroup.add(spawnPoint);
   scene.add(spawnPointGroup);
 }
 
-function updateSpawnPoint(spawnPoint: any){
+function updateSpawnPoint(spawnPoint: any) {
   spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
 
@@ -81,30 +72,30 @@ function createPlatform() {
 }
 
 function createFloor() {
-    
+
   const floor = new Mesh(
     new PlaneGeometry(1000, 1000),
-    new MeshStandardMaterial({ 
-        color: 0xF0ccc0,
-        roughness: 0.8,
-        metalness: 0.2 
-      })
-    );
-    floor.receiveShadow = true;
-    floor.position.y = -5;
-    floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
-    scene.add(floor);
+    new MeshStandardMaterial({
+      color: 0xF0ccc0,
+      roughness: 0.8,
+      metalness: 0.2
+    })
+  );
+  floor.receiveShadow = true;
+  floor.position.y = -5;
+  floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
+  scene.add(floor);
 
-    const floorBody = new Body({
-        type: Body.STATIC,
-        shape: new Plane(),
-    });
-    floorBody.position.set(floor.position.x, floor.position.y, floor.position.z);
-    floorBody.quaternion.set(floor.quaternion.x, floor.quaternion.y, floor.quaternion.z, floor.quaternion.w);
-    physicsWorld.addBody(floorBody);
+  const floorBody = new Body({
+    type: Body.STATIC,
+    shape: new Plane(),
+  });
+  floorBody.position.set(floor.position.x, floor.position.y, floor.position.z);
+  floorBody.quaternion.set(floor.quaternion.x, floor.quaternion.y, floor.quaternion.z, floor.quaternion.w);
+  physicsWorld.addBody(floorBody);
 }
 
-function createCube () {
+function createCube() {
   const cubeGroup = new Group();
   const cubeGeometry = new BoxGeometry(2.0, 2.0, 2.0);
   const cubeMaterial = new MeshStandardMaterial({ color: 0x0095dd });
@@ -113,37 +104,37 @@ function createCube () {
   cube.castShadow = true;
 
   const cubeBody = new Body({
-      mass: 1,
-      shape: new Box(new Vec3(1.0, 1.0, 1.0)),
-      sleepTimeLimit: .1
+    mass: 1,
+    shape: new Box(new Vec3(1.0, 1.0, 1.0)),
+    sleepTimeLimit: .1
   });
-  
+
 
   cubeBody.position.copy(spawnPointPosition);
   cubeGroup.position.copy(cubeBody.position as any);
-  
+
   physicsWorld.addBody(cubeBody);
-  
+
   cubeGroup.add(cube);
   scene.add(cubeGroup);
 
-  return {cubeGroup, cubeBody}
+  return { cubeGroup, cubeBody }
 }
 
-function init () {
+function init() {
 
-  const container = document.getElementById( 'container' );
+  const container = document.getElementById('container');
 
-	camera = new PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 1, 5000 );
-	camera.position.set( 10, 30, 50 );
+  camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+  camera.position.set(10, 30, 50);
 
-	scene = new Scene();
-	scene.background = new Color().setHSL( 0.6, 0, 1 );
-	scene.fog = new Fog( scene.background, 1, 5000 );
+  scene = new Scene();
+  scene.background = new Color().setHSL(0.6, 0, 1);
+  scene.fog = new Fog(scene.background, 1, 5000);
 
   const ambientLight = new AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
-  
+
   const topLight = new PointLight(0xffffff, 500);
   topLight.position.set(10, 15, 0);
   topLight.castShadow = true;
@@ -155,27 +146,27 @@ function init () {
 
 
   // Le renderer
-  renderer = new WebGLRenderer( { antialias: true } );
-  renderer.setPixelRatio( window.devicePixelRatio );
-  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer = new WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
-  container!.appendChild( renderer.domElement );
+  container!.appendChild(renderer.domElement);
 
 
   // Contrôles de la caméra
   const controls = new OrbitControls(camera, renderer.domElement);
 
   // Contrôles du spawn point
-	window.addEventListener( 'keydown', ( event ) => {
+  window.addEventListener('keydown', (event) => {
 
-		if (event.key === 'ArrowUp' ) spawnPointPosition.z += - 1;
-		if (event.key === 'ArrowDown' ) spawnPointPosition.z += 1;
-		if (event.key === 'ArrowLeft' ) spawnPointPosition.x +=  - 1;
-		if (event.key === 'ArrowRight' ) spawnPointPosition.x += 1;
+    if (event.key === 'ArrowUp') spawnPointPosition.z += - 1;
+    if (event.key === 'ArrowDown') spawnPointPosition.z += 1;
+    if (event.key === 'ArrowLeft') spawnPointPosition.x += - 1;
+    if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
 
     updateSpawnPoint(scene.getObjectByName("spawnPoint"));
-			
-	} );
+
+  });
 
   // On crée nos objets
   createFloor();
@@ -188,7 +179,7 @@ function loadData() {
     .load('test.glb', gltfReader);
 }
 
-function gltfReader(gltf : GLTF) {
+function gltfReader(gltf: GLTF) {
   let testModel = null;
 
   testModel = gltf.scene;
@@ -204,10 +195,10 @@ function gltfReader(gltf : GLTF) {
 // loadData();
 
 const clock = new Clock();
-let lastSpawnTime = 0; 
+let lastSpawnTime = 0;
 const spawnInterval = 5;
 
-function render () {
+function render() {
   physicsWorld.fixedStep();
 
   const currentTime = clock.getElapsedTime();
@@ -227,7 +218,7 @@ function render () {
 
 
   // Update all cubes to match their physics bodies
-  stackedCubes.forEach(({cubeGroup, cubeBody}) => {
+  stackedCubes.forEach(({ cubeGroup, cubeBody }) => {
     cubeGroup.position.copy(cubeBody.position as any);
     cubeGroup.quaternion.copy(cubeBody.quaternion as any);
   });
