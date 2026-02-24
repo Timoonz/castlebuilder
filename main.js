@@ -1,9 +1,17 @@
 "use strict";
 import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLight, Clock, Group, MeshStandardMaterial, Fog, Color, PlaneGeometry, Vector3, PointLight } from 'three';
-import { Body, Box, Plane, Vec3, World, } from 'cannon-es';
+import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, } from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// La caméra
 var camera, scene, renderer;
+// Gestion du temps
+var clock = new Clock();
+var lastSpawnTime = 0;
+var spawnInterval = 5;
+// Caractéristiques des cubes qui tombent
+var cubeSize = 2.0;
+var cubeMass = 1.0;
 // Le cube qui tombe
 var fallingCube;
 // Liste des cubes stackés
@@ -14,6 +22,14 @@ var spawnPointPosition = new Vec3(0, 10, 0);
 var physicsWorld = new World({
     gravity: new Vec3(0, -5, 0),
 });
+// Le matériau physique du sol
+var floorPhysMaterial = new Material();
+// Les caractéristiques physiques des pièces qui tombent par rapport au sol
+var PieceToFloorBounciness = 0.0;
+var PieceToFloorFriction = 0.7;
+// Les caractéristiques physiques des pièces qui tombent par rapport aux autres pièces
+var PieceToPieceBounciness = 0.7;
+var PieceToPieceFriction = 1.0;
 function createSpawnPoint() {
     var spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
     var spawnPointMaterial = new MeshStandardMaterial({ color: 0xb20000 });
@@ -36,12 +52,13 @@ function createFloor() {
         roughness: 0.8,
         metalness: 0.2
     }));
-    floor.receiveShadow = true;
     floor.position.y = -5;
     floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
+    floor.receiveShadow = true;
     scene.add(floor);
     var floorBody = new Body({
         type: Body.STATIC,
+        material: floorPhysMaterial,
         shape: new Plane(),
     });
     floorBody.position.set(floor.position.x, floor.position.y, floor.position.z);
@@ -49,13 +66,17 @@ function createFloor() {
     physicsWorld.addBody(floorBody);
 }
 function createCube() {
+    // Le cube de Threejs
     var cubeGroup = new Group();
-    var cubeGeometry = new BoxGeometry(2.0, 2.0, 2.0);
+    var cubeGeometry = new BoxGeometry(cubeSize, cubeSize, cubeSize);
     var cubeMaterial = new MeshStandardMaterial({ color: 0x0095dd });
     var cube = new Mesh(cubeGeometry, cubeMaterial);
     cube.castShadow = true;
+    // Le corps physique du cube
+    var cubePhysMaterial = new Material();
     var cubeBody = new Body({
-        mass: 1,
+        mass: cubeMass,
+        material: cubePhysMaterial,
         shape: new Box(new Vec3(1.0, 1.0, 1.0)),
         sleepTimeLimit: .1
     });
@@ -64,6 +85,9 @@ function createCube() {
     physicsWorld.addBody(cubeBody);
     cubeGroup.add(cube);
     scene.add(cubeGroup);
+    // Le matériau de contact entre le sol et le cube
+    var mat_cube_floor = new ContactMaterial(floorPhysMaterial, cubePhysMaterial, { friction: PieceToFloorFriction, restitution: PieceToFloorBounciness });
+    physicsWorld.addContactMaterial(mat_cube_floor);
     return { cubeGroup: cubeGroup, cubeBody: cubeBody };
 }
 function init() {
@@ -106,6 +130,7 @@ function init() {
     // On crée nos objets
     createFloor();
     createSpawnPoint();
+    // Gestion de la "bounciness "
 }
 function loadData() {
     new GLTFLoader()
@@ -124,9 +149,6 @@ function gltfReader(gltf) {
     }
 }
 // loadData();
-var clock = new Clock();
-var lastSpawnTime = 0;
-var spawnInterval = 5;
 function render() {
     physicsWorld.fixedStep();
     var currentTime = clock.getElapsedTime();
