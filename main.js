@@ -30,6 +30,9 @@ var fallingPiece;
 var stackedPieces = [];
 // Les pièces qui sont tombées sur le sol et qui sont à casser
 var piecesToBreak = [];
+var DEBRIS_COUNT = 6; // En combien de débris on veut que les pièces se cassent
+var DEBRIS_LIFETIME = 4; // Le temps à partir duquel les débris disparaîssent cimplètement
+var FADE_START = DEBRIS_LIFETIME * 0.5; // Le temps à partir duquel les débris commencent à fader
 // Les débris des pièces cassées
 var debris = [];
 //─── Point de spawn ─────────────────────────────────────────────────────────────────────
@@ -63,7 +66,6 @@ function buildPhysicsShape(config) {
     }
 }
 //  ─── Les débris ────────────────────────────────
-var DEBRIS_COUNT = 6; // En combien de débris on veut que les pièces se cassent
 function breakPiece(piece) {
     var pos = piece.body.position;
     var vel = piece.body.velocity;
@@ -75,8 +77,8 @@ function breakPiece(piece) {
     for (var i = 0; i < DEBRIS_COUNT; i++) {
         var fragSize = 0.2 + Math.random() * 0.25;
         var fragGroup = new Group();
-        var fragMesh = new Mesh(new BoxGeometry(fragSize * 2, fragSize * 2, fragSize * 2), new MeshStandardMaterial({ color: color, roughness: 1.0 }));
-        fragMesh.castShadow = true;
+        var fragMesh = new Mesh(new BoxGeometry(fragSize * 2, fragSize * 2, fragSize * 2), new MeshStandardMaterial({ color: color, roughness: 1.0, transparent: true, opacity: 1.0 }));
+        // fragMesh.castShadow = true;
         fragGroup.add(fragMesh);
         scene.add(fragGroup);
         var fragBody = new Body({
@@ -92,7 +94,7 @@ function breakPiece(piece) {
         fragBody.velocity.set(vel.x * 0.3 + (Math.random() - 0.5) * spread, Math.random() * 2, vel.z * 0.3 + (Math.random() - 0.5) * spread);
         fragBody.angularVelocity.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
         physicsWorld.addBody(fragBody);
-        debris.push({ group: fragGroup, body: fragBody });
+        debris.push({ group: fragGroup, body: fragBody, spawnTime: clock.getElapsedTime() });
     }
 }
 function createPiece(config) {
@@ -249,6 +251,8 @@ function gltfReader(gltf) {
 // loadData();
 function render() {
     physicsWorld.fixedStep();
+    var currentTime = clock.getElapsedTime();
+    // Génération des débris
     if (piecesToBreak.length > 0) {
         piecesToBreak.forEach(function (piece) {
             stackedPieces = stackedPieces.filter(function (p) { return p.body !== piece.body; });
@@ -259,7 +263,6 @@ function render() {
         });
         piecesToBreak = [];
     }
-    var currentTime = clock.getElapsedTime();
     if (currentTime - lastSpawnTime >= spawnInterval) {
         if (fallingPiece) {
             stackedPieces.push(fallingPiece);
@@ -278,10 +281,26 @@ function render() {
         group.position.copy(body.position);
         group.quaternion.copy(body.quaternion);
     });
-    debris.forEach(function (_a) {
-        var group = _a.group, body = _a.body;
+    // ─── Gestion des débris ──────────────────────────────────────
+    // On filtre les débris 
+    debris = debris.filter(function (_a) {
+        var group = _a.group, body = _a.body, spawnTime = _a.spawnTime;
+        var age = currentTime - spawnTime; // l'âge du débris
+        if (age >= DEBRIS_LIFETIME) { // Si le débris a dépassé le DEBRIS_LIFETIME, one le supprime
+            scene.remove(group);
+            physicsWorld.removeBody(body);
+            return false;
+        }
+        // Update de la position
         group.position.copy(body.position);
         group.quaternion.copy(body.quaternion);
+        // le fading du cube
+        if (age > FADE_START) {
+            var opacity = 1 - (age - FADE_START) / (DEBRIS_LIFETIME - FADE_START);
+            group.children[0].material &&
+                (group.children[0].material.opacity = opacity);
+        }
+        return true;
     });
     requestAnimationFrame(render);
     renderer.render(scene, camera);
