@@ -50,10 +50,10 @@ const cubeSize = 2.0;
 const cubeMass = 1.0;
 
 // Le cube qui tombe
-let fallingCube: { cubeGroup: Group, cubeBody: Body };
+let fallingCube: { cubeGroup: Group, cubeBody: Body, cubePhysMaterial: Material };
 
 // Liste des cubes stackés
-let stackedCubes: Array<{ cubeGroup: Group, cubeBody: Body }> = [];
+let stackedCubes: Array<{ cubeGroup: Group, cubeBody: Body, cubePhysMaterial: Material }> = [];
 
 // Le point où nos cubes vont spawner
 let spawnPointPosition = new Vec3(0, 10, 0);
@@ -67,7 +67,7 @@ let physicsWorld = new World({
 const floorPhysMaterial = new Material();
 
 // Les caractéristiques physiques des pièces qui tombent par rapport au sol
-const PieceToFloorBounciness = 1.0;
+const PieceToFloorBounciness = 0.0;
 const PieceToFloorFriction = 0.5;
 
 // Les caractéristiques physiques des pièces qui tombent par rapport aux autres pièces
@@ -101,8 +101,6 @@ function createPlatform(x: number, y: number, z: number, width: number, height: 
   platformMesh.castShadow = true;
   scene.add(platformMesh);
 
-  // Physics body — static Box matching the mesh dimensions exactly
-  // Cannon-es Box takes half-extents
   const platformBody = new Body({
     type: Body.STATIC,
     material: floorPhysMaterial,
@@ -114,7 +112,7 @@ function createPlatform(x: number, y: number, z: number, width: number, height: 
 
 }
 
-function createFloor() {
+function createFloor(y: number) {
 
   const floor = new Mesh(
     new PlaneGeometry(1000, 1000),
@@ -125,7 +123,7 @@ function createFloor() {
     })
   );
 
-  floor.position.y = -5;
+  floor.position.y = y;
   floor.quaternion.setFromAxisAngle(new Vector3(-1, 0, 0), Math.PI * .5);
 
   floor.receiveShadow = true;
@@ -175,12 +173,12 @@ function createCube() {
   physicsWorld.addContactMaterial(mat_cube_floor);
 
   // Le matériau de contact entre chaque cube 
-  // stackedCubes.forEach(({ a, cubebBody }) => {
-  //   const matCubeToCube = new ContactMaterial(cubeBody.material, cubePhysMaterial, { friction: PieceToPieceFriction, restitution: PieceToPieceBounciness });
-  //   physicsWorld.addContactMaterial(mat_cube_floor);
-  // });
+  stackedCubes.forEach(({ cubePhysMaterial: existingMat }) => {
+    const matCubeToCube = new ContactMaterial(existingMat, cubePhysMaterial, { friction: PieceToPieceFriction, restitution: PieceToPieceBounciness });
+    physicsWorld.addContactMaterial(matCubeToCube);
+  });
 
-  return { cubeGroup, cubeBody }
+  return { cubeGroup, cubeBody, cubePhysMaterial }
 }
 
 function init() {
@@ -231,11 +229,9 @@ function init() {
   });
 
   // On crée nos objets
-  createFloor(); // Le sol
+  createFloor(-5); // Le sol
   createSpawnPoint(); // Le point de spawn
   createPlatform(0, -2, 0, 24, 1, 24); // La petite plateforme
-
-  // Gestion de la "bounciness "
 
 }
 
