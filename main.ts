@@ -40,8 +40,19 @@ import {
   GLTFLoader
 } from 'three/addons/loaders/GLTFLoader.js';
 
+import { zzfx } from 'zzfx'
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
+
+// ─── Audio ───────────────────────────────────────────────
+const unlockAudio = () => {
+  const ctx = new AudioContext();
+  ctx.resume().then(() => ctx.close());
+  window.removeEventListener('click', unlockAudio);
+  window.removeEventListener('keydown', unlockAudio);
+};
+window.addEventListener('click', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
 
 //─── Temps ─────────────────────────────────────────────────────────────────────
 const clock = new Clock();
@@ -105,7 +116,8 @@ let physicsWorld = new World({
 const floorPhysMaterial = new Material();
 
 // Piece ↔ floor
-const PieceToFloorBounciness = 0.0;
+const PieceToFloorBounciness = 0.0;//  ─── Listener:  ─────────────────────────────────────────────────────────────────
+
 const PieceToFloorFriction = 0.5;
 
 // Piece ↔ piece
@@ -231,6 +243,7 @@ function createPiece(config: PieceConfig) {
     const otherBody: Body = event.body;
     if (otherBody === floorBody) {
       if (!piecesToBreak.includes(piece)) {
+        zzfx(...[0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
         piecesToBreak.push(piece);
       }
     }
@@ -239,8 +252,6 @@ function createPiece(config: PieceConfig) {
 
   return { group, body, physMat };
 }
-
-//  ─── Listener:  ─────────────────────────────────────────────────────────────────
 
 
 //  ─── SpawnPoint ─────────────────────────────────────────────────────────────────

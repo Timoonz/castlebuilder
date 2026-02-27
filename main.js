@@ -3,8 +3,18 @@ import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLigh
 import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, Cylinder, } from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { zzfx } from 'zzfx';
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 var camera, scene, renderer;
+// ─── Audio ───────────────────────────────────────────────
+var unlockAudio = function () {
+    var ctx = new AudioContext();
+    ctx.resume().then(function () { return ctx.close(); });
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+};
+window.addEventListener('click', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
 //─── Temps ─────────────────────────────────────────────────────────────────────
 var clock = new Clock();
 var lastSpawnTime = 0;
@@ -44,7 +54,7 @@ var physicsWorld = new World({
 // ─── Matériaux physiques ───────────────────────────────────────────────────────
 var floorPhysMaterial = new Material();
 // Piece ↔ floor
-var PieceToFloorBounciness = 0.0;
+var PieceToFloorBounciness = 0.0; //  ─── Listener:  ─────────────────────────────────────────────────────────────────
 var PieceToFloorFriction = 0.5;
 // Piece ↔ piece
 var PieceToPieceBounciness = 0.7;
@@ -133,13 +143,13 @@ function createPiece(config) {
         var otherBody = event.body;
         if (otherBody === floorBody) {
             if (!piecesToBreak.includes(piece)) {
+                zzfx.apply(void 0, [0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
                 piecesToBreak.push(piece);
             }
         }
     });
     return { group: group, body: body, physMat: physMat };
 }
-//  ─── Listener:  ─────────────────────────────────────────────────────────────────
 //  ─── SpawnPoint ─────────────────────────────────────────────────────────────────
 function createSpawnPoint() {
     var spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
