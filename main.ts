@@ -15,7 +15,9 @@ import {
   Color,
   PlaneGeometry,
   Vector3,
-  PointLight
+  PointLight,
+  CylinderGeometry,
+  BufferGeometry
 } from 'three';
 
 import {
@@ -26,6 +28,7 @@ import {
   World,
   Material,
   ContactMaterial,
+  Cylinder,
 } from 'cannon-es'
 
 import {
@@ -37,43 +40,206 @@ import {
   GLTFLoader
 } from 'three/addons/loaders/GLTFLoader.js';
 
-// La caméra
+// ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
 
-// Gestion du temps
+//─── Temps ─────────────────────────────────────────────────────────────────────
 const clock = new Clock();
 let lastSpawnTime = 0;
 const spawnInterval = 5;
 
-// Caractéristiques des cubes qui tombent
-const cubeSize = 2.0;
-const cubeMass = 1.0;
+//─── Pièces ─────────────────────────────────────────────────────────────────────
+
+type PieceShape = "cube" | "cylinder"
+
+interface PieceConfig {
+  shape: PieceShape;
+  size: number;
+  mass: number;
+  color: number;
+}
+
+const PIECES: Record<string, PieceConfig> = {
+  cube: {
+    shape: 'cube',
+    size: 1.0,      // half-extent → 2×2×2 visual box
+    mass: 1.0,
+    color: 0x0095dd,
+  },
+  cylinder: {
+    shape: 'cylinder',
+    size: 1.0,
+    mass: 1.0,
+    color: 0x8e44ad,
+  },
+}
+
+let currentPiece: keyof typeof PIECES = 'cylinder';
 
 // Le cube qui tombe
-let fallingCube: { cubeGroup: Group, cubeBody: Body, cubePhysMaterial: Material };
+let fallingPiece: { group: Group, body: Body, physMat: Material };
 
 // Liste des cubes stackés
-let stackedCubes: Array<{ cubeGroup: Group, cubeBody: Body, cubePhysMaterial: Material }> = [];
+let stackedPieces: Array<{ group: Group, body: Body, physMat: Material }> = [];
 
-// Le point où nos cubes vont spawner
+// Les pièces qui sont tombées sur le sol et qui sont à casser
+let piecesToBreak: Array<{ group: Group, body: Body, physMat: Material }> = [];
+
+// Les débris des pièces cassées
+let debris: Array<{ group: Group, body: Body }> = [];
+
+//─── Point de spawn ─────────────────────────────────────────────────────────────────────
 let spawnPointPosition = new Vec3(0, 10, 0);
 
-// Le monde physique
+//─── Monde physique ─────────────────────────────────────────────────────────────────────
 let physicsWorld = new World({
   gravity: new Vec3(0, -5, 0),
 });
 
-// Le matériau physique du sol
+// ─── Matériaux physiques ───────────────────────────────────────────────────────
 const floorPhysMaterial = new Material();
 
-// Les caractéristiques physiques des pièces qui tombent par rapport au sol
+// Piece ↔ floor
 const PieceToFloorBounciness = 0.0;
 const PieceToFloorFriction = 0.5;
 
-// Les caractéristiques physiques des pièces qui tombent par rapport aux autres pièces
+// Piece ↔ piece
 const PieceToPieceBounciness = 0.7;
 const PieceToPieceFriction = 1.0;
 
+// ─── Helper: build Three.js geometry from config ──────────────────────────────
+function buildGeometry(config: PieceConfig): BufferGeometry {
+  const s = config.size;
+  switch (config.shape) {
+    case 'cube': return new BoxGeometry(s * 2, s * 2, s * 2);
+    case 'cylinder': return new CylinderGeometry(s, s, s * 2, 16);
+  }
+}
+
+// ─── Helper: build Cannon-ES shape from config ────────────────────────────────
+function buildPhysicsShape(config: PieceConfig) {
+  const s = config.size;
+  switch (config.shape) {
+    case 'cube': return new Box(new Vec3(s, s, s));
+    case 'cylinder': return new Cylinder(s, s, s * 2, 16);
+  }
+}
+
+//  ─── Les débris ────────────────────────────────
+const DEBRIS_COUNT = 6; // En combien de débris on veut que les pièces se cassent
+
+function breakPiece(piece: { group: Group, body: Body, physMat: Material }) {
+  const pos = piece.body.position;
+  const vel = piece.body.velocity;
+  const color = ((piece.group.children[0] as Mesh).material as MeshStandardMaterial).color.getHex();
+
+  // Supprimer la pièce originale
+  scene.remove(piece.group);
+  physicsWorld.removeBody(piece.body);
+
+  // Générer les débris
+  for (let i = 0; i < DEBRIS_COUNT; i++) {
+    const fragSize = 0.2 + Math.random() * 0.25;
+
+    const fragGroup = new Group();
+    const fragMesh = new Mesh(
+      new BoxGeometry(fragSize * 2, fragSize * 2, fragSize * 2),
+      new MeshStandardMaterial({ color, roughness: 1.0 })
+    );
+    fragMesh.castShadow = true;
+    fragGroup.add(fragMesh);
+    scene.add(fragGroup);
+
+    const fragBody = new Body({
+      mass: 0.1,
+      shape: new Box(new Vec3(fragSize, fragSize, fragSize)),
+      linearDamping: 0.4,
+      angularDamping: 0.4,
+    });
+
+    // Position dispersée autour du centre de la pièce
+    fragBody.position.set(
+      pos.x + (Math.random() - 0.5) * 1.2,
+      pos.y + (Math.random() - 0.5) * 0.5,
+      pos.z + (Math.random() - 0.5) * 1.2,
+    );
+
+    // Vélocité : hérite de l'impact + dispersion latérale
+    const spread = 3;
+    fragBody.velocity.set(
+      vel.x * 0.3 + (Math.random() - 0.5) * spread,
+      Math.random() * 2,
+      vel.z * 0.3 + (Math.random() - 0.5) * spread,
+    );
+
+    fragBody.angularVelocity.set(
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12,
+    );
+
+    physicsWorld.addBody(fragBody);
+    debris.push({ group: fragGroup, body: fragBody });
+  }
+}
+
+function createPiece(config: PieceConfig) {
+  // côté Three.js 
+  const group = new Group();
+  const mesh = new Mesh(buildGeometry(config), new MeshStandardMaterial({ color: config.color }));
+  mesh.castShadow = true;
+  group.add(mesh);
+  scene.add(group);
+
+  // côté Cannon-ES 
+  const physMat = new Material();
+  const body = new Body({
+    mass: config.mass,
+    material: physMat,
+    shape: buildPhysicsShape(config),
+    sleepTimeLimit: 0.1,
+  });
+
+  body.position.copy(spawnPointPosition);
+  group.position.copy(body.position as any);
+  physicsWorld.addBody(body);
+
+  // Contact: pièce ↔ sol
+  physicsWorld.addContactMaterial(
+    new ContactMaterial(floorPhysMaterial, physMat, {
+      friction: PieceToFloorFriction,
+      restitution: PieceToFloorBounciness,
+    })
+  );
+
+  // Contact: pièce ↔ pièces
+  stackedPieces.forEach(({ physMat: existingMat }) => {
+    physicsWorld.addContactMaterial(
+      new ContactMaterial(existingMat, physMat, {
+        friction: PieceToPieceFriction,
+        restitution: PieceToPieceBounciness,
+      })
+    );
+  });
+
+  const piece = { group, body, physMat };
+  body.addEventListener('collide', (event: any) => {
+    const otherBody: Body = event.body;
+    if (otherBody === floorBody) {
+      if (!piecesToBreak.includes(piece)) {
+        piecesToBreak.push(piece);
+      }
+    }
+  });
+
+
+  return { group, body, physMat };
+}
+
+//  ─── Listener:  ─────────────────────────────────────────────────────────────────
+
+
+//  ─── SpawnPoint ─────────────────────────────────────────────────────────────────
 function createSpawnPoint() {
   const spawnPointGeom = new BoxGeometry(1.0, 1.0, 1.0);
   const spawnPointMaterial = new MeshStandardMaterial({ color: 0xb20000 });
@@ -91,6 +257,7 @@ function updateSpawnPoint(spawnPoint: any) {
   spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
 
+// ─── Plateforme ─────────────────────────────────────────────────────────────────
 function createPlatform(x: number, y: number, z: number, width: number, height: number, depth: number) {
   const platformMesh = new Mesh(
     new BoxGeometry(width, height, depth),
@@ -112,6 +279,9 @@ function createPlatform(x: number, y: number, z: number, width: number, height: 
 
 }
 
+//  ─── Sol ─────────────────────────────────────────────────────────────────
+let floorBody: Body; // le coprs physique du sol, pour qu'il soit accessible partout
+
 function createFloor(y: number) {
 
   const floor = new Mesh(
@@ -130,7 +300,7 @@ function createFloor(y: number) {
 
   scene.add(floor);
 
-  const floorBody = new Body({
+  floorBody = new Body({
     type: Body.STATIC,
     // material: floorPhysMaterial,
     shape: new Plane(),
@@ -140,46 +310,6 @@ function createFloor(y: number) {
   physicsWorld.addBody(floorBody);
 }
 
-function createCube() {
-  // Le cube de Threejs
-  const cubeGroup = new Group();
-  const cubeGeometry = new BoxGeometry(cubeSize, cubeSize, cubeSize);
-  const cubeMaterial = new MeshStandardMaterial({ color: 0x0095dd });
-  const cube = new Mesh(cubeGeometry, cubeMaterial);
-
-  cube.castShadow = true;
-
-
-  // Le corps physique du cube
-  const cubePhysMaterial = new Material();
-  const cubeBody = new Body({
-    mass: cubeMass,
-    material: cubePhysMaterial,
-    shape: new Box(new Vec3(1.0, 1.0, 1.0)),
-    sleepTimeLimit: .1
-  });
-
-
-  cubeBody.position.copy(spawnPointPosition);
-  cubeGroup.position.copy(cubeBody.position as any);
-
-  physicsWorld.addBody(cubeBody);
-
-  cubeGroup.add(cube);
-  scene.add(cubeGroup);
-
-  // Le matériau de contact entre le sol et le cube
-  const mat_cube_floor = new ContactMaterial(floorPhysMaterial, cubePhysMaterial, { friction: PieceToFloorFriction, restitution: PieceToFloorBounciness })
-  physicsWorld.addContactMaterial(mat_cube_floor);
-
-  // Le matériau de contact entre chaque cube 
-  stackedCubes.forEach(({ cubePhysMaterial: existingMat }) => {
-    const matCubeToCube = new ContactMaterial(existingMat, cubePhysMaterial, { friction: PieceToPieceFriction, restitution: PieceToPieceBounciness });
-    physicsWorld.addContactMaterial(matCubeToCube);
-  });
-
-  return { cubeGroup, cubeBody, cubePhysMaterial }
-}
 
 function init() {
 
@@ -261,26 +391,43 @@ function gltfReader(gltf: GLTF) {
 function render() {
   physicsWorld.fixedStep();
 
+
+  if (piecesToBreak.length > 0) {
+    piecesToBreak.forEach(piece => {
+      stackedPieces = stackedPieces.filter(p => p.body !== piece.body);
+      if (fallingPiece && fallingPiece.body === piece.body) {
+        (fallingPiece as any) = null;
+      }
+      breakPiece(piece);
+    });
+    piecesToBreak = [];
+  }
+
   const currentTime = clock.getElapsedTime();
 
   if (currentTime - lastSpawnTime >= spawnInterval) {
-    if (fallingCube) {
-      stackedCubes.push(fallingCube);
+    if (fallingPiece) {
+      stackedPieces.push(fallingPiece);
     }
-    fallingCube = createCube();
+    fallingPiece = createPiece(PIECES[currentPiece]);;
     lastSpawnTime = currentTime;
   }
 
-  if (fallingCube) {
-    fallingCube.cubeGroup.position.copy(fallingCube.cubeBody.position as any);
-    fallingCube.cubeGroup.quaternion.copy(fallingCube.cubeBody.quaternion as any);
+  if (fallingPiece) {
+    fallingPiece.group.position.copy(fallingPiece.body.position as any);
+    fallingPiece.group.quaternion.copy(fallingPiece.body.quaternion as any);
   }
 
 
   // Update all cubes to match their physics bodies
-  stackedCubes.forEach(({ cubeGroup, cubeBody }) => {
-    cubeGroup.position.copy(cubeBody.position as any);
-    cubeGroup.quaternion.copy(cubeBody.quaternion as any);
+  stackedPieces.forEach(({ group, body }) => {
+    group.position.copy(body.position as any);
+    group.quaternion.copy(body.quaternion as any);
+  });
+
+  debris.forEach(({ group, body }) => {
+    group.position.copy(body.position as any);
+    group.quaternion.copy(body.quaternion as any);
   });
 
   requestAnimationFrame(render);
