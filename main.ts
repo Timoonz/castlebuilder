@@ -126,13 +126,13 @@ interface PieceConfig {
 const PIECES: Record<string, PieceConfig> = {
   cube: {
     shape: 'cube',
-    size: 1.0,      // half-extent
+    size: 1.5,
     mass: 1.0,
     color: 0x0095dd,
   },
   cylinder: {
     shape: 'cylinder',
-    size: 1.0,
+    size: 1.5,
     mass: 1.0,
     color: 0x8e44ad,
   },
@@ -196,7 +196,6 @@ function buildPhysicsShape(config: PieceConfig) {
 }
 
 //  ─── Les débris ────────────────────────────────
-
 function breakPiece(piece: { group: Group, body: Body, physMat: Material }) {
   const pos = piece.body.position;
   const vel = piece.body.velocity;
@@ -208,7 +207,7 @@ function breakPiece(piece: { group: Group, body: Body, physMat: Material }) {
 
   // Générer les débris
   for (let i = 0; i < DEBRIS_COUNT; i++) {
-    const fragSize = 0.2 + Math.random() * 0.25;
+    const fragSize = 0.2 + Math.random() * 0.60;
 
     const fragGroup = new Group();
     const fragMesh = new Mesh(

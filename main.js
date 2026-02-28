@@ -61,13 +61,13 @@ var spawnInterval = 5;
 var PIECES = {
     cube: {
         shape: 'cube',
-        size: 1.0, // half-extent
+        size: 1.5,
         mass: 1.0,
         color: 0x0095dd,
     },
     cylinder: {
         shape: 'cylinder',
-        size: 1.0,
+        size: 1.5,
         mass: 1.0,
         color: 0x8e44ad,
     },
@@ -124,7 +124,7 @@ function breakPiece(piece) {
     physicsWorld.removeBody(piece.body);
     // Générer les débris
     for (var i = 0; i < DEBRIS_COUNT; i++) {
-        var fragSize = 0.2 + Math.random() * 0.25;
+        var fragSize = 0.2 + Math.random() * 0.60;
         var fragGroup = new Group();
         var fragMesh = new Mesh(new BoxGeometry(fragSize * 2, fragSize * 2, fragSize * 2), new MeshStandardMaterial({ color: color, roughness: 1.0, transparent: true, opacity: 1.0 }));
         // fragMesh.castShadow = true;
