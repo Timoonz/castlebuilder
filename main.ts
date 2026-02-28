@@ -41,16 +41,23 @@ import {
 } from 'three/addons/loaders/GLTFLoader.js';
 
 import { zzfx } from 'zzfx'
+import { EffectComposer } from 'three/examples/jsm/Addons.js';
+import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let scene: Scene<Object3DEventMap>;
+let composer: EffectComposer;
 let camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
 let renderer = new WebGLRenderer({ antialias: true });
 
 // ─── Gestion du ceiling ───────────────────────────────────────────────
 let CEIL = 10
-const CEIL_INCREMENT = 5;
+const CEIL_INCREMENT = 10;
 const piecesAboveCeil = new Set<Body>();
+
+// ─── Gestion des niveaux ───────────────────────────────────────────────
+const LEVEL_STEP = 20;
 
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 const ORBIT_RADIUS = Math.sqrt(2800);
@@ -299,6 +306,7 @@ function createPiece(config: PieceConfig) {
   const piece = { group, body, physMat };
   body.addEventListener('collide', (event: any) => {
     const otherBody: Body = event.body;
+    // Collision avec le sol
     if (otherBody === floorBody) {
       if (!piecesToBreak.includes(piece)) {
         zzfx(...[0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
@@ -307,11 +315,11 @@ function createPiece(config: PieceConfig) {
       return;
     }
 
+    // Collision avec autre chose
     if (fallingPiece && fallingPiece.body === body) {
       stackedPieces.push(fallingPiece);
       (fallingPiece as any) = null;
-      fallingPiece = createPiece(PIECES[currentPiece]);
-      lastSpawnTime = clock.getElapsedTime();
+      lastSpawnTime = clock.getElapsedTime(); // le délai commence maintenant
     }
   });
 
@@ -424,6 +432,14 @@ function init() {
   renderer.shadowMap.enabled = true;
   container!.appendChild(renderer.domElement);
 
+
+  composer = new EffectComposer(renderer);
+  const renderPixelatedPass = new RenderPixelatedPass(7, scene, camera);
+  composer.addPass(renderPixelatedPass);
+
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
+
   // Contrôles du spawn point
   window.addEventListener('keydown', (event) => {
 
@@ -462,12 +478,8 @@ function render() {
     piecesToBreak = [];
   }
 
-  if (currentTime - lastSpawnTime >= spawnInterval) {
-    if (fallingPiece) {
-      stackedPieces.push(fallingPiece);
-    }
-    fallingPiece = createPiece(PIECES[currentPiece]);;
-    lastSpawnTime = currentTime;
+  if (!fallingPiece && currentTime - lastSpawnTime >= spawnInterval) {
+    fallingPiece = createPiece(PIECES[currentPiece]);
   }
 
   if (fallingPiece) {
@@ -488,7 +500,7 @@ function render() {
     if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
       piecesAboveCeil.add(body);
       CEIL += CEIL_INCREMENT;
-      spawnPointPosition.y = CEIL + 5;
+      spawnPointPosition.y += CEIL_INCREMENT;
     }
   });
 
@@ -519,8 +531,8 @@ function render() {
 
   updateCameraOrbit();
   updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+  composer.render();
   requestAnimationFrame(render);
-  renderer.render(scene, camera);
 }
 
 init();
@@ -529,12 +541,11 @@ render();
 window.addEventListener('resize', onWindowResize, false);
 
 function onWindowResize() {
-
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
-
+  composer.setSize(window.innerWidth, window.innerHeight);
 }
 
 

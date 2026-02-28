@@ -3,14 +3,20 @@ import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLigh
 import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, Cylinder, } from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { zzfx } from 'zzfx';
+import { EffectComposer } from 'three/examples/jsm/Addons.js';
+import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 var scene;
+var composer;
 var camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
 var renderer = new WebGLRenderer({ antialias: true });
 // ─── Gestion du ceiling ───────────────────────────────────────────────
 var CEIL = 10;
-var CEIL_INCREMENT = 5;
+var CEIL_INCREMENT = 10;
 var piecesAboveCeil = new Set();
+// ─── Gestion des niveaux ───────────────────────────────────────────────
+var LEVEL_STEP = 20;
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 var ORBIT_RADIUS = Math.sqrt(2800);
 var cameraAngle = Math.atan2(10, 50);
@@ -184,6 +190,7 @@ function createPiece(config) {
     var piece = { group: group, body: body, physMat: physMat };
     body.addEventListener('collide', function (event) {
         var otherBody = event.body;
+        // Collision avec le sol
         if (otherBody === floorBody) {
             if (!piecesToBreak.includes(piece)) {
                 zzfx.apply(void 0, [0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
@@ -191,11 +198,11 @@ function createPiece(config) {
             }
             return;
         }
+        // Collision avec autre chose
         if (fallingPiece && fallingPiece.body === body) {
             stackedPieces.push(fallingPiece);
             fallingPiece = null;
-            fallingPiece = createPiece(PIECES[currentPiece]);
-            lastSpawnTime = clock.getElapsedTime();
+            lastSpawnTime = clock.getElapsedTime(); // le délai commence maintenant
         }
     });
     return { group: group, body: body, physMat: physMat };
@@ -273,6 +280,11 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
+    composer = new EffectComposer(renderer);
+    var renderPixelatedPass = new RenderPixelatedPass(7, scene, camera);
+    composer.addPass(renderPixelatedPass);
+    var outputPass = new OutputPass();
+    composer.addPass(outputPass);
     // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
         if (event.key === 'ArrowUp')
@@ -304,13 +316,8 @@ function render() {
         });
         piecesToBreak = [];
     }
-    if (currentTime - lastSpawnTime >= spawnInterval) {
-        if (fallingPiece) {
-            stackedPieces.push(fallingPiece);
-        }
+    if (!fallingPiece && currentTime - lastSpawnTime >= spawnInterval) {
         fallingPiece = createPiece(PIECES[currentPiece]);
-        ;
-        lastSpawnTime = currentTime;
     }
     if (fallingPiece) {
         fallingPiece.group.position.copy(fallingPiece.body.position);
@@ -328,7 +335,7 @@ function render() {
         if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
             piecesAboveCeil.add(body);
             CEIL += CEIL_INCREMENT;
-            spawnPointPosition.y = CEIL + 5;
+            spawnPointPosition.y += CEIL_INCREMENT;
         }
     });
     // ─── Gestion des débris ──────────────────────────────────────
@@ -354,8 +361,8 @@ function render() {
     });
     updateCameraOrbit();
     updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+    composer.render();
     requestAnimationFrame(render);
-    renderer.render(scene, camera);
 }
 init();
 render();
@@ -364,6 +371,7 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
 }
 function loadData() {
     new GLTFLoader()
