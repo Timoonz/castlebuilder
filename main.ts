@@ -47,27 +47,57 @@ let camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1
 let renderer = new WebGLRenderer({ antialias: true });
 
 
-const ORBIT_RADIUS = Math.sqrt(10 * 10 + 50 * 50); // same distance as original (10, 30, 50)
+// ─── Contrôles de la caméra ───────────────────────────────────────────────
+const ORBIT_RADIUS = Math.sqrt(2800);
 const ORBIT_Y = 30;
-let cameraAngle = Math.atan2(10, 50);               // initial angle matching x=10, z=50
-const CAMERA_SPEED = 0.05;                          // radians per frame while key held
+let cameraAngle = Math.atan2(10, 50);
+const CAMERA_SPEED = 0.03;
+
+let cameraAbove = false;
+
+// Pour éviter d'avoir à recréer un "eventListener" à chaque tour de boucle
+// Puisque l'on veut que la caméra s'update à chaque frame
 const keysDown: Record<string, boolean> = {};
 
-window.addEventListener('keydown', e => { keysDown[e.key] = true; });
+window.addEventListener('keydown', e => {
+  keysDown[e.key] = true;
+  if (e.key === 'z') cameraAbove = !cameraAbove; // Si on appuie sur z, alors on passe en mode "vue de dessus"
+});
 window.addEventListener('keyup', e => { keysDown[e.key] = false; });
 
-function updateCameraOrbit() {
-  if (keysDown['q'] || keysDown['Q']) cameraAngle -= CAMERA_SPEED;
-  if (keysDown['d'] || keysDown['D']) cameraAngle += CAMERA_SPEED;
+// Piur remettre la caméra à son état "normal"
+function resetCamera() {
   camera.position.set(
     Math.sin(cameraAngle) * ORBIT_RADIUS,
     ORBIT_Y,
     Math.cos(cameraAngle) * ORBIT_RADIUS
   );
+}
+
+// Pour mettre la caméra en vue de dessus
+function setCameraAbove() {
+  camera.position.set(
+    0,
+    ORBIT_Y + 20,
+    0
+  );
+}
+
+function updateCameraOrbit() {
+  if (cameraAbove) { // Si la caméra doit être mise en vue de dessus, alors on la met
+    setCameraAbove()
+  }
+  else {
+    // Sin on appuie sur 'q' ou 'd', ou bouge à gauche/droite sur le cercle
+    if (keysDown['q']) cameraAngle -= CAMERA_SPEED;
+    if (keysDown['d']) cameraAngle += CAMERA_SPEED;
+    resetCamera();
+  }
   camera.lookAt(0, 0, 0);
 }
 
 // ─── Audio ───────────────────────────────────────────────
+// Une histoire de contexte audio à remplacer pour zzfx
 const unlockAudio = () => {
   const ctx = new AudioContext();
   ctx.resume().then(() => ctx.close());
@@ -353,7 +383,8 @@ function init() {
 
   const container = document.getElementById('container');
 
-  updateCameraOrbit();
+  // On met la caméra à son état normal en début de partie
+  resetCamera();
 
   camera.position.set(10, 30, 50);
 
