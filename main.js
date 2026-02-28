@@ -1,11 +1,27 @@
 "use strict";
 import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLight, Clock, Group, MeshStandardMaterial, Fog, Color, PlaneGeometry, Vector3, PointLight, CylinderGeometry } from 'three';
 import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, Cylinder, } from 'cannon-es';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { zzfx } from 'zzfx';
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
-var camera, scene, renderer;
+var scene;
+var camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+var renderer = new WebGLRenderer({ antialias: true });
+var ORBIT_RADIUS = Math.sqrt(10 * 10 + 50 * 50); // same distance as original (10, 30, 50)
+var ORBIT_Y = 30;
+var cameraAngle = Math.atan2(10, 50); // initial angle matching x=10, z=50
+var CAMERA_SPEED = 0.05; // radians per frame while key held
+var keysDown = {};
+window.addEventListener('keydown', function (e) { keysDown[e.key] = true; });
+window.addEventListener('keyup', function (e) { keysDown[e.key] = false; });
+function updateCameraOrbit() {
+    if (keysDown['q'] || keysDown['Q'])
+        cameraAngle -= CAMERA_SPEED;
+    if (keysDown['d'] || keysDown['D'])
+        cameraAngle += CAMERA_SPEED;
+    camera.position.set(Math.sin(cameraAngle) * ORBIT_RADIUS, ORBIT_Y, Math.cos(cameraAngle) * ORBIT_RADIUS);
+    camera.lookAt(0, 0, 0);
+}
 // ─── Audio ───────────────────────────────────────────────
 var unlockAudio = function () {
     var ctx = new AudioContext();
@@ -22,7 +38,7 @@ var spawnInterval = 5;
 var PIECES = {
     cube: {
         shape: 'cube',
-        size: 1.0, // half-extent → 2×2×2 visual box
+        size: 1.0, // half-extent
         mass: 1.0,
         color: 0x0095dd,
     },
@@ -202,7 +218,7 @@ function createFloor(y) {
 }
 function init() {
     var container = document.getElementById('container');
-    camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+    updateCameraOrbit();
     camera.position.set(10, 30, 50);
     scene = new Scene();
     scene.background = new Color().setHSL(0.6, 0, 1);
@@ -218,13 +234,10 @@ function init() {
     topLight.shadow.camera.far = 50;
     scene.add(topLight);
     // Le renderer
-    renderer = new WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
-    // Contrôles de la caméra
-    var controls = new OrbitControls(camera, renderer.domElement);
     // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
         if (event.key === 'ArrowUp')
@@ -312,6 +325,7 @@ function render() {
         }
         return true;
     });
+    updateCameraOrbit();
     requestAnimationFrame(render);
     renderer.render(scene, camera);
 }

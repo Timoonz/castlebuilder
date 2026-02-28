@@ -42,7 +42,30 @@ import {
 
 import { zzfx } from 'zzfx'
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
-let camera: PerspectiveCamera, scene: Scene<Object3DEventMap>, renderer: WebGLRenderer;
+let scene: Scene<Object3DEventMap>;
+let camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+let renderer = new WebGLRenderer({ antialias: true });
+
+
+const ORBIT_RADIUS = Math.sqrt(10 * 10 + 50 * 50); // same distance as original (10, 30, 50)
+const ORBIT_Y = 30;
+let cameraAngle = Math.atan2(10, 50);               // initial angle matching x=10, z=50
+const CAMERA_SPEED = 0.05;                          // radians per frame while key held
+const keysDown: Record<string, boolean> = {};
+
+window.addEventListener('keydown', e => { keysDown[e.key] = true; });
+window.addEventListener('keyup', e => { keysDown[e.key] = false; });
+
+function updateCameraOrbit() {
+  if (keysDown['q'] || keysDown['Q']) cameraAngle -= CAMERA_SPEED;
+  if (keysDown['d'] || keysDown['D']) cameraAngle += CAMERA_SPEED;
+  camera.position.set(
+    Math.sin(cameraAngle) * ORBIT_RADIUS,
+    ORBIT_Y,
+    Math.cos(cameraAngle) * ORBIT_RADIUS
+  );
+  camera.lookAt(0, 0, 0);
+}
 
 // ─── Audio ───────────────────────────────────────────────
 const unlockAudio = () => {
@@ -73,7 +96,7 @@ interface PieceConfig {
 const PIECES: Record<string, PieceConfig> = {
   cube: {
     shape: 'cube',
-    size: 1.0,      // half-extent → 2×2×2 visual box
+    size: 1.0,      // half-extent
     mass: 1.0,
     color: 0x0095dd,
   },
@@ -330,7 +353,8 @@ function init() {
 
   const container = document.getElementById('container');
 
-  camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+  updateCameraOrbit();
+
   camera.position.set(10, 30, 50);
 
   scene = new Scene();
@@ -351,15 +375,10 @@ function init() {
 
 
   // Le renderer
-  renderer = new WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   container!.appendChild(renderer.domElement);
-
-
-  // Contrôles de la caméra
-  const controls = new OrbitControls(camera, renderer.domElement);
 
   // Contrôles du spawn point
   window.addEventListener('keydown', (event) => {
@@ -372,6 +391,7 @@ function init() {
     updateSpawnPoint(scene.getObjectByName("spawnPoint"));
 
   });
+
 
   // On crée nos objets
   createFloor(-5); // Le sol
@@ -400,8 +420,6 @@ function gltfReader(gltf: GLTF) {
 }
 
 // loadData();
-
-
 
 function render() {
   physicsWorld.fixedStep();
@@ -467,15 +485,13 @@ function render() {
     return true;
   });
 
+  updateCameraOrbit();
   requestAnimationFrame(render);
   renderer.render(scene, camera);
 }
 
 init();
 render();
-
-
-
 
 
 window.addEventListener('resize', onWindowResize, false);
