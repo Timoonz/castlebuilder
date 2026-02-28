@@ -41,15 +41,19 @@ import {
 } from 'three/addons/loaders/GLTFLoader.js';
 
 import { zzfx } from 'zzfx'
+
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let scene: Scene<Object3DEventMap>;
 let camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
 let renderer = new WebGLRenderer({ antialias: true });
 
+// ─── Gestion du ceiling ───────────────────────────────────────────────
+let CEIL = 10
+const CEIL_INCREMENT = 5;
+const piecesAboveCeil = new Set<Body>();
 
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 const ORBIT_RADIUS = Math.sqrt(2800);
-const ORBIT_Y = 30;
 let cameraAngle = Math.atan2(10, 50);
 const CAMERA_SPEED = 0.03;
 
@@ -69,7 +73,7 @@ window.addEventListener('keyup', e => { keysDown[e.key] = false; });
 function resetCamera() {
   camera.position.set(
     Math.sin(cameraAngle) * ORBIT_RADIUS,
-    ORBIT_Y,
+    CEIL + 10, // On met la caméra au-dessus du plafond
     Math.cos(cameraAngle) * ORBIT_RADIUS
   );
 }
@@ -78,7 +82,7 @@ function resetCamera() {
 function setCameraAbove() {
   camera.position.set(
     0,
-    ORBIT_Y + 20,
+    CEIL + 20,
     0
   );
 }
@@ -93,8 +97,10 @@ function updateCameraOrbit() {
     if (keysDown['d']) cameraAngle += CAMERA_SPEED;
     resetCamera();
   }
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(0, CEIL - 10, 0);
 }
+
+
 
 // ─── Audio ───────────────────────────────────────────────
 // Une histoire de contexte audio à remplacer pour zzfx
@@ -158,7 +164,7 @@ const FADE_START = DEBRIS_LIFETIME * 0.5; // Le temps à partir duquel les débr
 let debris: Array<{ group: Group, body: Body, spawnTime: number }> = [];
 
 //─── Point de spawn ─────────────────────────────────────────────────────────────────────
-let spawnPointPosition = new Vec3(0, 10, 0);
+let spawnPointPosition = new Vec3(0, CEIL + 5, 0);
 
 //─── Monde physique ─────────────────────────────────────────────────────────────────────
 let physicsWorld = new World({
@@ -174,7 +180,7 @@ const PieceToFloorBounciness = 0.0;//  ─── Listener:  ──────�
 const PieceToFloorFriction = 0.5;
 
 // Piece ↔ piece
-const PieceToPieceBounciness = 0.7;
+const PieceToPieceBounciness = 0.0;
 const PieceToPieceFriction = 1.0;
 
 // ─── Helper: build Three.js geometry from config ──────────────────────────────
@@ -298,6 +304,14 @@ function createPiece(config: PieceConfig) {
         zzfx(...[0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
         piecesToBreak.push(piece);
       }
+      return;
+    }
+
+    if (fallingPiece && fallingPiece.body === body) {
+      stackedPieces.push(fallingPiece);
+      (fallingPiece as any) = null;
+      fallingPiece = createPiece(PIECES[currentPiece]);
+      lastSpawnTime = clock.getElapsedTime();
     }
   });
 
@@ -385,7 +399,7 @@ function init() {
   // On met la caméra à son état normal en début de partie
   resetCamera();
 
-  camera.position.set(10, 30, 50);
+  // camera.position.set(10, 30, 50);
 
   scene = new Scene();
   scene.background = new Color().setHSL(0.6, 0, 1);
@@ -418,7 +432,7 @@ function init() {
     if (event.key === 'ArrowLeft') spawnPointPosition.x += - 1;
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
 
-    updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+    // updateSpawnPoint(scene.getObjectByName("spawnPoint"));
 
   });
 
@@ -429,27 +443,6 @@ function init() {
   createPlatform(0, -2, 0, 24, 1, 24); // La petite plateforme
 
 }
-
-function loadData() {
-  new GLTFLoader()
-    .setPath('assets/models/')
-    .load('test.glb', gltfReader);
-}
-
-function gltfReader(gltf: GLTF) {
-  let testModel = null;
-
-  testModel = gltf.scene;
-
-  if (testModel != null) {
-    console.log("Model loaded:  " + testModel);
-    scene.add(gltf.scene);
-  } else {
-    console.log("Load FAILED.  ");
-  }
-}
-
-// loadData();
 
 function render() {
   physicsWorld.fixedStep();
@@ -489,8 +482,17 @@ function render() {
     group.quaternion.copy(body.quaternion as any);
   });
 
-  // ─── Gestion des débris ──────────────────────────────────────
 
+  // ─── Vérification du plafond ──────────────────────────────────────
+  stackedPieces.forEach(({ body }) => {
+    if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
+      piecesAboveCeil.add(body);
+      CEIL += CEIL_INCREMENT;
+      spawnPointPosition.y = CEIL + 5;
+    }
+  });
+
+  // ─── Gestion des débris ──────────────────────────────────────
   // On filtre les débris 
   debris = debris.filter(({ group, body, spawnTime }) => {
     const age = currentTime - spawnTime; // l'âge du débris
@@ -516,13 +518,13 @@ function render() {
   });
 
   updateCameraOrbit();
+  updateSpawnPoint(scene.getObjectByName("spawnPoint"));
   requestAnimationFrame(render);
   renderer.render(scene, camera);
 }
 
 init();
 render();
-
 
 window.addEventListener('resize', onWindowResize, false);
 
@@ -534,3 +536,26 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 
 }
+
+
+
+function loadData() {
+  new GLTFLoader()
+    .setPath('assets/models/')
+    .load('test.glb', gltfReader);
+}
+
+function gltfReader(gltf: GLTF) {
+  let testModel = null;
+
+  testModel = gltf.scene;
+
+  if (testModel != null) {
+    console.log("Model loaded:  " + testModel);
+    scene.add(gltf.scene);
+  } else {
+    console.log("Load FAILED.  ");
+  }
+}
+
+// loadData();

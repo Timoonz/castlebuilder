@@ -7,9 +7,12 @@ import { zzfx } from 'zzfx';
 var scene;
 var camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
 var renderer = new WebGLRenderer({ antialias: true });
+// ─── Gestion du ceiling ───────────────────────────────────────────────
+var CEIL = 10;
+var CEIL_INCREMENT = 5;
+var piecesAboveCeil = new Set();
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 var ORBIT_RADIUS = Math.sqrt(2800);
-var ORBIT_Y = 30;
 var cameraAngle = Math.atan2(10, 50);
 var CAMERA_SPEED = 0.03;
 var cameraAbove = false;
@@ -24,11 +27,12 @@ window.addEventListener('keydown', function (e) {
 window.addEventListener('keyup', function (e) { keysDown[e.key] = false; });
 // Piur remettre la caméra à son état "normal"
 function resetCamera() {
-    camera.position.set(Math.sin(cameraAngle) * ORBIT_RADIUS, ORBIT_Y, Math.cos(cameraAngle) * ORBIT_RADIUS);
+    camera.position.set(Math.sin(cameraAngle) * ORBIT_RADIUS, CEIL + 10, // On met la caméra au-dessus du plafond
+    Math.cos(cameraAngle) * ORBIT_RADIUS);
 }
 // Pour mettre la caméra en vue de dessus
 function setCameraAbove() {
-    camera.position.set(0, ORBIT_Y + 20, 0);
+    camera.position.set(0, CEIL + 20, 0);
 }
 function updateCameraOrbit() {
     if (cameraAbove) { // Si la caméra doit être mise en vue de dessus, alors on la met
@@ -42,7 +46,7 @@ function updateCameraOrbit() {
             cameraAngle += CAMERA_SPEED;
         resetCamera();
     }
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(0, CEIL - 10, 0);
 }
 // ─── Audio ───────────────────────────────────────────────
 // Une histoire de contexte audio à remplacer pour zzfx
@@ -85,7 +89,7 @@ var FADE_START = DEBRIS_LIFETIME * 0.5; // Le temps à partir duquel les débris
 // Les débris des pièces cassées
 var debris = [];
 //─── Point de spawn ─────────────────────────────────────────────────────────────────────
-var spawnPointPosition = new Vec3(0, 10, 0);
+var spawnPointPosition = new Vec3(0, CEIL + 5, 0);
 //─── Monde physique ─────────────────────────────────────────────────────────────────────
 var physicsWorld = new World({
     gravity: new Vec3(0, -5, 0),
@@ -96,7 +100,7 @@ var floorPhysMaterial = new Material();
 var PieceToFloorBounciness = 0.0; //  ─── Listener:  ─────────────────────────────────────────────────────────────────
 var PieceToFloorFriction = 0.5;
 // Piece ↔ piece
-var PieceToPieceBounciness = 0.7;
+var PieceToPieceBounciness = 0.0;
 var PieceToPieceFriction = 1.0;
 // ─── Helper: build Three.js geometry from config ──────────────────────────────
 function buildGeometry(config) {
@@ -185,6 +189,13 @@ function createPiece(config) {
                 zzfx.apply(void 0, [0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
                 piecesToBreak.push(piece);
             }
+            return;
+        }
+        if (fallingPiece && fallingPiece.body === body) {
+            stackedPieces.push(fallingPiece);
+            fallingPiece = null;
+            fallingPiece = createPiece(PIECES[currentPiece]);
+            lastSpawnTime = clock.getElapsedTime();
         }
     });
     return { group: group, body: body, physMat: physMat };
@@ -243,7 +254,7 @@ function init() {
     var container = document.getElementById('container');
     // On met la caméra à son état normal en début de partie
     resetCamera();
-    camera.position.set(10, 30, 50);
+    // camera.position.set(10, 30, 50);
     scene = new Scene();
     scene.background = new Color().setHSL(0.6, 0, 1);
     scene.fog = new Fog(scene.background, 1, 5000);
@@ -272,30 +283,13 @@ function init() {
             spawnPointPosition.x += -1;
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
-        updateSpawnPoint(scene.getObjectByName("spawnPoint"));
+        // updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     });
     // On crée nos objets
     createFloor(-5); // Le sol
     createSpawnPoint(); // Le point de spawn
     createPlatform(0, -2, 0, 24, 1, 24); // La petite plateforme
 }
-function loadData() {
-    new GLTFLoader()
-        .setPath('assets/models/')
-        .load('test.glb', gltfReader);
-}
-function gltfReader(gltf) {
-    var testModel = null;
-    testModel = gltf.scene;
-    if (testModel != null) {
-        console.log("Model loaded:  " + testModel);
-        scene.add(gltf.scene);
-    }
-    else {
-        console.log("Load FAILED.  ");
-    }
-}
-// loadData();
 function render() {
     physicsWorld.fixedStep();
     var currentTime = clock.getElapsedTime();
@@ -328,6 +322,15 @@ function render() {
         group.position.copy(body.position);
         group.quaternion.copy(body.quaternion);
     });
+    // ─── Vérification du plafond ──────────────────────────────────────
+    stackedPieces.forEach(function (_a) {
+        var body = _a.body;
+        if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
+            piecesAboveCeil.add(body);
+            CEIL += CEIL_INCREMENT;
+            spawnPointPosition.y = CEIL + 5;
+        }
+    });
     // ─── Gestion des débris ──────────────────────────────────────
     // On filtre les débris 
     debris = debris.filter(function (_a) {
@@ -350,6 +353,7 @@ function render() {
         return true;
     });
     updateCameraOrbit();
+    updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     requestAnimationFrame(render);
     renderer.render(scene, camera);
 }
@@ -360,5 +364,21 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+}
+function loadData() {
+    new GLTFLoader()
+        .setPath('assets/models/')
+        .load('test.glb', gltfReader);
+}
+function gltfReader(gltf) {
+    var testModel = null;
+    testModel = gltf.scene;
+    if (testModel != null) {
+        console.log("Model loaded:  " + testModel);
+        scene.add(gltf.scene);
+    }
+    else {
+        console.log("Load FAILED.  ");
+    }
 }
 //# sourceMappingURL=main.js.map
