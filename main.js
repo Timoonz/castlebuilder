@@ -36,12 +36,12 @@ window.addEventListener('keydown', function (e) {
 window.addEventListener('keyup', function (e) { keysDown[e.key] = false; });
 // Piur remettre la caméra à son état "normal"
 function resetCamera() {
-    camera.position.set(Math.sin(cameraAngle) * ORBIT_RADIUS, CEIL + 10, // On met la caméra au-dessus du plafond
+    camera.position.set(Math.sin(cameraAngle) * ORBIT_RADIUS, CEIL + 25, // On met la caméra au-dessus du plafond
     Math.cos(cameraAngle) * ORBIT_RADIUS);
 }
 // Pour mettre la caméra en vue de dessus
 function setCameraAbove() {
-    camera.position.set(0, CEIL + 20, 0);
+    camera.position.set(0, CEIL + 30, 0);
 }
 function updateCameraOrbit() {
     if (cameraAbove) { // Si la caméra doit être mise en vue de dessus, alors on la met
@@ -381,6 +381,10 @@ function init() {
     composer.addPass(outputPass);
     // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowUp')
+            spawnPointPosition.z += -1;
+        if (event.key === 'ArrowDown')
+            spawnPointPosition.z += 1;
         if (event.key === 'ArrowLeft')
             spawnPointPosition.x += -1;
         if (event.key === 'ArrowRight')

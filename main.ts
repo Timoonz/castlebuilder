@@ -77,7 +77,7 @@ window.addEventListener('keyup', e => { keysDown[e.key] = false; });
 function resetCamera() {
   camera.position.set(
     Math.sin(cameraAngle) * ORBIT_RADIUS,
-    CEIL + 10, // On met la caméra au-dessus du plafond
+    CEIL + 25, // On met la caméra au-dessus du plafond
     Math.cos(cameraAngle) * ORBIT_RADIUS
   );
 }
@@ -86,7 +86,7 @@ function resetCamera() {
 function setCameraAbove() {
   camera.position.set(
     0,
-    CEIL + 20,
+    CEIL + 30,
     0
   );
 }
@@ -549,6 +549,8 @@ function init() {
 
   // Contrôles du spawn point
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowUp') spawnPointPosition.z += - 1;
+    if (event.key === 'ArrowDown') spawnPointPosition.z += 1;
     if (event.key === 'ArrowLeft') spawnPointPosition.x += - 1;
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
 
