@@ -2,6 +2,8 @@ import { zzfx } from "zzfx";
 
 export type SoundEffect =
     | "blockDestruction"
+    | "blockHit"
+    | "levelUp"
 
 type ZzfxParams = (number | undefined)[];
 
@@ -18,7 +20,15 @@ export class SynthManager {
     private readonly soundConfigs: Record<SoundEffect, SoundConfig> = {
         blockDestruction: {
             params: [0, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426],
-            volume: 0.5,
+            volume: 0.8,
+        },
+        levelUp: {
+            params: [, , 338, .05, .04, .04, 1, 3.6, , 42, -184, .02, .02, , , , .07, .88, .1, .32, 336],
+            volume: 1.0,
+        },
+        blockHit: {
+            params: [, , 242, .05, .03, .03, , 2.4, , , -151, .01, .04, , , .2, .24, .85, .08, , -1422],
+            volume: 0.6,
         }
     };
 

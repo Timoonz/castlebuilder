@@ -308,6 +308,8 @@ function createPiece(config: PieceConfig) {
   });
 
   const piece = { group, body, physMat };
+
+  // Pour gérer les collisions de la pièce
   body.addEventListener('collide', (event: any) => {
     const otherBody: Body = event.body;
     // Collision avec le sol
@@ -320,7 +322,9 @@ function createPiece(config: PieceConfig) {
     }
 
     // Collision avec autre chose
+    // On le met dans les pièces stackées et on relance la création d'une nouvelle pièce
     if (fallingPiece && fallingPiece.body === body) {
+      synthManager.play('blockHit');
       stackedPieces.push(fallingPiece);
       (fallingPiece as any) = null;
       lastSpawnTime = clock.getElapsedTime(); // le délai commence maintenant
@@ -539,8 +543,14 @@ function render() {
   requestAnimationFrame(render);
 }
 
+const startScreen = document.getElementById('start-screen')!;
+const playBtn = document.getElementById('play-btn')!;
 init();
-render();
+
+playBtn.addEventListener('click', () => {
+  startScreen.style.display = 'none'; // Hide the overlay
+  render();
+}, { once: true });
 
 window.addEventListener('resize', onWindowResize, false);
 
