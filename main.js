@@ -265,6 +265,7 @@ function updateSpawnPoint(spawnPoint) {
     spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
 // ─── Plateforme ─────────────────────────────────────────────────────────────────
+var PLATFORM_DIM = 24;
 function createPlatform(x, y, z, width, height, depth) {
     var platformMesh = new Mesh(new BoxGeometry(width, height, depth), new MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9, metalness: 0.0 }));
     platformMesh.position.set(x, y, z);
@@ -350,6 +351,8 @@ function init() {
             spawnPointPosition.x += -1;
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
+        spawnPointPosition.x = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.x));
+        spawnPointPosition.z = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.z));
     });
     // On crée une nouvelle pièce dès que l'on cliclk
     window.addEventListener('click', function () {
@@ -358,7 +361,7 @@ function init() {
     // On crée nos objets
     createFloor(-5); // Le sol
     createSpawnPoint(); // Le point de spawn
-    createPlatform(0, -2, 0, 24, 1, 24); // La petite plateforme
+    createPlatform(0, -2, 0, PLATFORM_DIM, 1, PLATFORM_DIM); // La petite plateforme
 }
 //  ─── Boucle de rendering ─────────────────────────────────────────────────────────────────
 function render() {
