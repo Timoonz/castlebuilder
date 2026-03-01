@@ -40,10 +40,12 @@ import {
   GLTFLoader
 } from 'three/addons/loaders/GLTFLoader.js';
 
-import { zzfx } from 'zzfx'
 import { EffectComposer } from 'three/examples/jsm/Addons.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+import { SynthManager } from "./src/SynthManager";
+
 
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let scene: Scene<Object3DEventMap>;
@@ -110,6 +112,8 @@ function updateCameraOrbit() {
 
 
 // ─── Audio ───────────────────────────────────────────────
+const synthManager = new SynthManager();
+
 // Une histoire de contexte audio à remplacer pour zzfx
 const unlockAudio = () => {
   const ctx = new AudioContext();
@@ -309,7 +313,7 @@ function createPiece(config: PieceConfig) {
     // Collision avec le sol
     if (otherBody === floorBody) {
       if (!piecesToBreak.includes(piece)) {
-        zzfx(...[0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
+        synthManager.play('blockDestruction');
         piecesToBreak.push(piece);
       }
       return;
@@ -434,7 +438,7 @@ function init() {
 
 
   composer = new EffectComposer(renderer);
-  const renderPixelatedPass = new RenderPixelatedPass(7, scene, camera);
+  const renderPixelatedPass = new RenderPixelatedPass(6, scene, camera);
   composer.addPass(renderPixelatedPass);
 
   const outputPass = new OutputPass();

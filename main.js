@@ -2,10 +2,10 @@
 import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLight, Clock, Group, MeshStandardMaterial, Fog, Color, PlaneGeometry, Vector3, PointLight, CylinderGeometry } from 'three';
 import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, Cylinder, } from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { zzfx } from 'zzfx';
 import { EffectComposer } from 'three/examples/jsm/Addons.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SynthManager } from "./src/SynthManager";
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 var scene;
 var composer;
@@ -55,6 +55,7 @@ function updateCameraOrbit() {
     camera.lookAt(0, CEIL - 10, 0);
 }
 // ─── Audio ───────────────────────────────────────────────
+var synthManager = new SynthManager();
 // Une histoire de contexte audio à remplacer pour zzfx
 var unlockAudio = function () {
     var ctx = new AudioContext();
@@ -193,7 +194,7 @@ function createPiece(config) {
         // Collision avec le sol
         if (otherBody === floorBody) {
             if (!piecesToBreak.includes(piece)) {
-                zzfx.apply(void 0, [0.5, , 277, , .11, .05, 1, 1.6, 62.8, -0.1, 56, .03, .13, .5, 233, .2, .21, .77, .47, .29, 426]); // Random 31 - Mutation 13
+                synthManager.play('blockDestruction');
                 piecesToBreak.push(piece);
             }
             return;
@@ -281,7 +282,7 @@ function init() {
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
     composer = new EffectComposer(renderer);
-    var renderPixelatedPass = new RenderPixelatedPass(7, scene, camera);
+    var renderPixelatedPass = new RenderPixelatedPass(6, scene, camera);
     composer.addPass(renderPixelatedPass);
     var outputPass = new OutputPass();
     composer.addPass(outputPass);
