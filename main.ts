@@ -31,15 +31,6 @@ import {
   Cylinder,
 } from 'cannon-es'
 
-import {
-  OrbitControls
-} from 'three/addons/controls/OrbitControls.js';
-
-import {
-  GLTF,
-  GLTFLoader
-} from 'three/addons/loaders/GLTFLoader.js';
-
 import { EffectComposer } from 'three/examples/jsm/Addons.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -59,7 +50,6 @@ const CEIL_INCREMENT = 10;
 const piecesAboveCeil = new Set<Body>();
 
 // ─── Gestion des niveaux ───────────────────────────────────────────────
-// const LEVEL_STEP = 20;
 let pieceColor = 0x8e44ad;
 
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
@@ -138,7 +128,6 @@ interface PieceConfig {
   shape: PieceShape;
   size: number;
   mass: number;
-  color: number;
 }
 
 const PIECES: Record<string, PieceConfig> = {
@@ -146,13 +135,11 @@ const PIECES: Record<string, PieceConfig> = {
     shape: 'cube',
     size: 1.5,
     mass: 1.0,
-    color: 0x0095dd,
   },
   cylinder: {
     shape: 'cylinder',
     size: 1.5,
     mass: 1.0,
-    color: 0x8e44ad,
   },
 }
 
