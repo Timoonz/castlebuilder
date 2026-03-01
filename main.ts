@@ -225,14 +225,13 @@ let physicsWorld = new World({
 // ─── Matériaux physiques ───────────────────────────────────────────────────────
 const floorPhysMaterial = new Material();
 
-// Piece ↔ floor
-const PieceToFloorBounciness = 0.0;//  ─── Listener:  ─────────────────────────────────────────────────────────────────
-
-const PieceToFloorFriction = 0.5;
+// Piece ↔ platform
+const PieceToFloorBounciness = 0.2;
+const PieceToFloorFriction = 0.1;
 
 // Piece ↔ piece
-const PieceToPieceBounciness = 0.0;
-const PieceToPieceFriction = 1.0;
+const PieceToPieceBounciness = 0.2;
+const PieceToPieceFriction = 0.5;
 
 // ─── Helper: build Three.js geometry from config ──────────────────────────────
 function buildGeometry(config: PieceConfig): BufferGeometry {
@@ -518,6 +517,20 @@ function init() {
 
     spawnPointPosition.x = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.x));
     spawnPointPosition.z = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.z));
+
+    if (event.key === 'r' && waitingPiece) {
+      const euler = new Vec3();
+      waitingPiece.body.quaternion.toEuler(euler);
+      waitingPiece.body.quaternion.setFromEuler(euler.x, euler.y + Math.PI / 2, euler.z);
+      waitingPiece.group.quaternion.copy(waitingPiece.body.quaternion as any);
+    }
+    if (event.key === 't' && waitingPiece) {
+      const euler = new Vec3();
+      waitingPiece.body.quaternion.toEuler(euler);
+      waitingPiece.body.quaternion.setFromEuler(euler.x, euler.y, euler.z + Math.PI / 2);
+      waitingPiece.group.quaternion.copy(waitingPiece.body.quaternion as any);
+    }
+
   });
 
   // On crée une nouvelle pièce dès que l'on cliclk
