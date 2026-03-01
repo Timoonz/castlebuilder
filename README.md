@@ -2,6 +2,8 @@
 À l'origine prévu comme un jeu où on empilait des blocs pour faire un joli château (d'où le nom), a évolué en un simple jeu où on fait tomber des blocs variés en essayant d'aller le plus haut possible.
 
 Pour bouger le point de spawn: les flèches droite/gauche
+Pour faire tourner la pièce qui va tomber: r sur l'axe y, t sur l'axe z
+
 Pour faire tourner la caméra à gauche/à droite autour du plateau: q et d
 Pour mettre la caméra en vue de dessus: z
 

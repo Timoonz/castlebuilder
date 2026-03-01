@@ -509,9 +509,6 @@ function init() {
 
   // Contrôles du spawn point
   window.addEventListener('keydown', (event) => {
-
-    if (event.key === 'ArrowUp') spawnPointPosition.z += - 1;
-    if (event.key === 'ArrowDown') spawnPointPosition.z += 1;
     if (event.key === 'ArrowLeft') spawnPointPosition.x += - 1;
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
 

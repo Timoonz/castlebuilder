@@ -64,9 +64,9 @@ function updateCameraOrbit() {
     }
     else {
         // Sin on appuie sur 'q' ou 'd', ou bouge à gauche/droite sur le cercle
-        if (keysDown['q'])
+        if (keysDown['ArrowLeft'])
             cameraAngle -= CAMERA_SPEED;
-        if (keysDown['d'])
+        if (keysDown['ArrowRight'])
             cameraAngle += CAMERA_SPEED;
         resetCamera();
     }
@@ -359,13 +359,9 @@ function init() {
     composer.addPass(outputPass);
     // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
-        if (event.key === 'ArrowUp')
-            spawnPointPosition.z += -1;
-        if (event.key === 'ArrowDown')
-            spawnPointPosition.z += 1;
-        if (event.key === 'ArrowLeft')
+        if (event.key === 'q')
             spawnPointPosition.x += -1;
-        if (event.key === 'ArrowRight')
+        if (event.key === 'd')
             spawnPointPosition.x += 1;
         spawnPointPosition.x = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.x));
         spawnPointPosition.z = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.z));
