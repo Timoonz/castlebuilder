@@ -15,7 +15,6 @@ var CEIL = 10;
 var CEIL_INCREMENT = 10;
 var piecesAboveCeil = new Set();
 // ─── Gestion des niveaux ───────────────────────────────────────────────
-// const LEVEL_STEP = 20;
 var pieceColor = 0x8e44ad;
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 var ORBIT_RADIUS = Math.sqrt(2800);
@@ -74,16 +73,28 @@ var PIECES = {
         shape: 'cube',
         size: 1.5,
         mass: 1.0,
-        color: 0x0095dd,
     },
     cylinder: {
         shape: 'cylinder',
         size: 1.5,
         mass: 1.0,
-        color: 0x8e44ad,
+    },
+    cone: {
+        shape: 'cone',
+        size: 1.5,
+        mass: 1.0,
+    },
+    bigRect: {
+        shape: 'bigRect',
+        size: 1.5,
+        mass: 2.0,
+    },
+    thinRect: {
+        shape: 'thinRect',
+        size: 1.5,
+        mass: 0.8,
     },
 };
-var currentPiece = 'cylinder';
 // Le cube qui tombe
 var fallingPiece;
 // Liste des cubes stackés
@@ -98,10 +109,15 @@ var debris = [];
 // ─── État de la pièce en attente ─────────────────────────────────────────────
 var waitingPiece = null;
 var waitingPieceSpawnTime = 0;
+// Génération randopme de la nouvelel pièce
+var currentPiece = 'cylinder';
 function createWaitingPiece() {
+    var keys = Object.keys(PIECES);
+    currentPiece = keys[Math.floor(Math.random() * keys.length)];
     waitingPiece = createPiece(PIECES[currentPiece]);
     waitingPieceSpawnTime = clock.getElapsedTime();
 }
+;
 function releasePiece() {
     if (!waitingPiece)
         return;
@@ -131,6 +147,9 @@ function buildGeometry(config) {
     switch (config.shape) {
         case 'cube': return new BoxGeometry(s * 2, s * 2, s * 2);
         case 'cylinder': return new CylinderGeometry(s, s, s * 2, 16);
+        case 'cone': return new CylinderGeometry(0, s, s * 2, 16);
+        case 'bigRect': return new BoxGeometry(s * 4, s * 1.5, s * 2);
+        case 'thinRect': return new BoxGeometry(s * 0.5, s * 3, s * 2);
     }
 }
 // ─── Helper: build Cannon-ES shape from config ────────────────────────────────
@@ -139,6 +158,9 @@ function buildPhysicsShape(config) {
     switch (config.shape) {
         case 'cube': return new Box(new Vec3(s, s, s));
         case 'cylinder': return new Cylinder(s, s, s * 2, 16);
+        case 'cone': return new Cylinder(0.01, s, s * 2, 16); // cannon-es doesn't support radius 0
+        case 'bigRect': return new Box(new Vec3(s * 2, s * 0.75, s));
+        case 'thinRect': return new Box(new Vec3(s * 0.25, s * 1.5, s));
     }
 }
 //  ─── Les débris ────────────────────────────────

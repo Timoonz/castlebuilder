@@ -122,7 +122,7 @@ const spawnInterval = 5;
 
 //─── Pièces ─────────────────────────────────────────────────────────────────────
 
-type PieceShape = "cube" | "cylinder"
+type PieceShape = "cube" | "cylinder" | "cone" | "bigRect" | "thinRect"
 
 interface PieceConfig {
   shape: PieceShape;
@@ -141,9 +141,24 @@ const PIECES: Record<string, PieceConfig> = {
     size: 1.5,
     mass: 1.0,
   },
+  cone: {
+    shape: 'cone',
+    size: 1.5,
+    mass: 1.0,
+  },
+  bigRect: {
+    shape: 'bigRect',
+    size: 1.5,
+    mass: 2.0,
+  },
+  thinRect: {
+    shape: 'thinRect',
+    size: 1.5,
+    mass: 0.8,
+  },
 }
 
-let currentPiece: keyof typeof PIECES = 'cylinder';
+
 
 // Le cube qui tombe
 let fallingPiece: { group: Group, body: Body, physMat: Material };
@@ -166,10 +181,14 @@ let debris: Array<{ group: Group, body: Body, spawnTime: number }> = [];
 let waitingPiece: { group: Group, body: Body, physMat: Material } | null = null;
 let waitingPieceSpawnTime = 0;
 
+// Génération randopme de la nouvelel pièce
+let currentPiece: keyof typeof PIECES = 'cylinder';
 function createWaitingPiece() {
+  const keys = Object.keys(PIECES);
+  currentPiece = keys[Math.floor(Math.random() * keys.length)];
   waitingPiece = createPiece(PIECES[currentPiece]);
   waitingPieceSpawnTime = clock.getElapsedTime();
-}
+};
 
 function releasePiece() {
   if (!waitingPiece) return;
@@ -208,6 +227,9 @@ function buildGeometry(config: PieceConfig): BufferGeometry {
   switch (config.shape) {
     case 'cube': return new BoxGeometry(s * 2, s * 2, s * 2);
     case 'cylinder': return new CylinderGeometry(s, s, s * 2, 16);
+    case 'cone': return new CylinderGeometry(0, s, s * 2, 16);
+    case 'bigRect': return new BoxGeometry(s * 4, s * 1.5, s * 2);
+    case 'thinRect': return new BoxGeometry(s * 0.5, s * 3, s * 2);
   }
 }
 
@@ -217,6 +239,9 @@ function buildPhysicsShape(config: PieceConfig) {
   switch (config.shape) {
     case 'cube': return new Box(new Vec3(s, s, s));
     case 'cylinder': return new Cylinder(s, s, s * 2, 16);
+    case 'cone': return new Cylinder(0.01, s, s * 2, 16); // cannon-es doesn't support radius 0
+    case 'bigRect': return new Box(new Vec3(s * 2, s * 0.75, s));
+    case 'thinRect': return new Box(new Vec3(s * 0.25, s * 1.5, s));
   }
 }
 
