@@ -37,6 +37,25 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { SynthManager } from "./src/SynthManager";
 
+//─── Temps ─────────────────────────────────────────────────────────────────────
+const clock = new Clock();
+let lastSpawnTime = 0;
+const spawnInterval = 5;
+
+// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
+let livesCount = 3;
+let isPaused = false;
+
+function checkGameOver() {
+  if (livesCount <= 0 && !isPaused) gameOver();
+  else return;
+};
+
+function gameOver() {
+  isPaused = true;
+  synthManager.play('gameOver');
+};
+
 
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let scene: Scene<Object3DEventMap>;
@@ -100,8 +119,6 @@ function updateCameraOrbit() {
   camera.lookAt(0, CEIL - 10, 0);
 }
 
-
-
 // ─── Audio ───────────────────────────────────────────────
 const synthManager = new SynthManager();
 
@@ -115,10 +132,7 @@ const unlockAudio = () => {
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 
-//─── Temps ─────────────────────────────────────────────────────────────────────
-const clock = new Clock();
-let lastSpawnTime = 0;
-const spawnInterval = 5;
+
 
 //─── Pièces ─────────────────────────────────────────────────────────────────────
 
@@ -157,7 +171,6 @@ const PIECES: Record<string, PieceConfig> = {
     mass: 0.8,
   },
 }
-
 
 
 // Le cube qui tombe
@@ -351,6 +364,7 @@ function createPiece(config: PieceConfig) {
       if (!piecesToBreak.includes(piece)) {
         synthManager.play('blockDestruction');
         piecesToBreak.push(piece);
+        livesCount--;
       }
       return;
     }
@@ -388,7 +402,7 @@ function updateSpawnPoint(spawnPoint: any) {
 }
 
 // ─── Plateforme ─────────────────────────────────────────────────────────────────
-const PLATFORM_DIM = 24;
+const PLATFORM_DIM = 18;
 
 function createPlatform(x: number, y: number, z: number, width: number, height: number, depth: number) {
   const platformMesh = new Mesh(
@@ -538,12 +552,12 @@ function render() {
   }
 
   // Créer une pièce en attente si aucune n'existe
-  if (!waitingPiece && !fallingPiece) {
+  if (!waitingPiece && !fallingPiece && !isPaused) {
     createWaitingPiece();
   }
 
   // Auto-release après le timer
-  if (waitingPiece && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
+  if (waitingPiece && !isPaused && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
     releasePiece();
   }
 
@@ -600,6 +614,7 @@ function render() {
     return true;
   });
 
+  checkGameOver();
   updateCameraOrbit();
   updateSpawnPoint(scene.getObjectByName("spawnPoint"));
   composer.render();

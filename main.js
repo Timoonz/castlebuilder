@@ -5,6 +5,25 @@ import { EffectComposer } from 'three/examples/jsm/Addons.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SynthManager } from "./src/SynthManager";
+//─── Temps ─────────────────────────────────────────────────────────────────────
+var clock = new Clock();
+var lastSpawnTime = 0;
+var spawnInterval = 5;
+// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
+var livesCount = 3;
+var isPaused = false;
+function checkGameOver() {
+    if (livesCount <= 0 && !isPaused)
+        gameOver();
+    else
+        return;
+}
+;
+function gameOver() {
+    isPaused = true;
+    synthManager.play('gameOver');
+}
+;
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 var scene;
 var composer;
@@ -64,10 +83,6 @@ var unlockAudio = function () {
 };
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
-//─── Temps ─────────────────────────────────────────────────────────────────────
-var clock = new Clock();
-var lastSpawnTime = 0;
-var spawnInterval = 5;
 var PIECES = {
     cube: {
         shape: 'cube',
@@ -236,6 +251,7 @@ function createPiece(config) {
             if (!piecesToBreak.includes(piece)) {
                 synthManager.play('blockDestruction');
                 piecesToBreak.push(piece);
+                livesCount--;
             }
             return;
         }
@@ -265,7 +281,7 @@ function updateSpawnPoint(spawnPoint) {
     spawnPoint.position.set(spawnPointPosition.x, spawnPointPosition.y, spawnPointPosition.z);
 }
 // ─── Plateforme ─────────────────────────────────────────────────────────────────
-var PLATFORM_DIM = 24;
+var PLATFORM_DIM = 18;
 function createPlatform(x, y, z, width, height, depth) {
     var platformMesh = new Mesh(new BoxGeometry(width, height, depth), new MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9, metalness: 0.0 }));
     platformMesh.position.set(x, y, z);
@@ -379,11 +395,11 @@ function render() {
         piecesToBreak = [];
     }
     // Créer une pièce en attente si aucune n'existe
-    if (!waitingPiece && !fallingPiece) {
+    if (!waitingPiece && !fallingPiece && !isPaused) {
         createWaitingPiece();
     }
     // Auto-release après le timer
-    if (waitingPiece && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
+    if (waitingPiece && !isPaused && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
         releasePiece();
     }
     // La pièce en attente suit le spawn point
@@ -431,6 +447,7 @@ function render() {
         }
         return true;
     });
+    checkGameOver();
     updateCameraOrbit();
     updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     composer.render();
