@@ -175,6 +175,26 @@ const FADE_START = DEBRIS_LIFETIME * 0.5; // Le temps à partir duquel les débr
 // Les débris des pièces cassées
 let debris: Array<{ group: Group, body: Body, spawnTime: number }> = [];
 
+// ─── État de la pièce en attente ─────────────────────────────────────────────
+let waitingPiece: { group: Group, body: Body, physMat: Material } | null = null;
+let waitingPieceSpawnTime = 0;
+
+function createWaitingPiece() {
+  waitingPiece = createPiece(PIECES[currentPiece]);
+  waitingPieceSpawnTime = clock.getElapsedTime();
+}
+
+function releasePiece() {
+  if (!waitingPiece) return;
+
+  // On active la physique
+  waitingPiece.body.type = Body.DYNAMIC;
+  waitingPiece.body.wakeUp();
+
+  fallingPiece = waitingPiece;
+  waitingPiece = null;
+}
+
 //─── Point de spawn ─────────────────────────────────────────────────────────────────────
 let spawnPointPosition = new Vec3(0, CEIL + 5, 0);
 
@@ -281,6 +301,7 @@ function createPiece(config: PieceConfig) {
   const physMat = new Material();
   const body = new Body({
     mass: config.mass,
+    type: Body.KINEMATIC, // Ne bouge pas tant qu'elle n'est pas "réveillée"
     material: physMat,
     shape: buildPhysicsShape(config),
     sleepTimeLimit: 0.1,
@@ -468,17 +489,10 @@ function init() {
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
   });
 
+  // On crée une nouvelle pièce dès que l'on cliclk
   window.addEventListener('click', () => {
-    if (!fallingPiece) {
-      lastSpawnTime = clock.getElapsedTime() - spawnInterval;
-
-    }
-
-    stackedPieces.push(fallingPiece);
-    (fallingPiece as any) = null;
-    lastSpawnTime = clock.getElapsedTime() - spawnInterval; // spawn immediately
+    releasePiece();
   });
-
 
   // On crée nos objets
   createFloor(-5); // Le sol
@@ -506,10 +520,23 @@ function render() {
     piecesToBreak = [];
   }
 
-  if (!fallingPiece && currentTime - lastSpawnTime >= spawnInterval) {
-    fallingPiece = createPiece(PIECES[currentPiece]);
+  // Créer une pièce en attente si aucune n'existe
+  if (!waitingPiece && !fallingPiece) {
+    createWaitingPiece();
   }
 
+  // Auto-release après le timer
+  if (waitingPiece && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
+    releasePiece();
+  }
+
+  // La pièce en attente suit le spawn point
+  if (waitingPiece) {
+    waitingPiece.body.position.copy(spawnPointPosition);
+    waitingPiece.group.position.copy(waitingPiece.body.position as any);
+  }
+
+  // La pièce qui tombe suit la physique normalement
   if (fallingPiece) {
     fallingPiece.group.position.copy(fallingPiece.body.position as any);
     fallingPiece.group.quaternion.copy(fallingPiece.body.quaternion as any);

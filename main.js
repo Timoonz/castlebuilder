@@ -1,7 +1,6 @@
 "use strict";
 import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, AmbientLight, Clock, Group, MeshStandardMaterial, Fog, Color, PlaneGeometry, Vector3, PointLight, CylinderGeometry } from 'three';
 import { Body, Box, Plane, Vec3, World, Material, ContactMaterial, Cylinder, } from 'cannon-es';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/examples/jsm/Addons.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -96,6 +95,22 @@ var DEBRIS_LIFETIME = 4; // Le temps à partir duquel les débris disparaîssent
 var FADE_START = DEBRIS_LIFETIME * 0.5; // Le temps à partir duquel les débris commencent à fader
 // Les débris des pièces cassées
 var debris = [];
+// ─── État de la pièce en attente ─────────────────────────────────────────────
+var waitingPiece = null;
+var waitingPieceSpawnTime = 0;
+function createWaitingPiece() {
+    waitingPiece = createPiece(PIECES[currentPiece]);
+    waitingPieceSpawnTime = clock.getElapsedTime();
+}
+function releasePiece() {
+    if (!waitingPiece)
+        return;
+    // On active la physique
+    waitingPiece.body.type = Body.DYNAMIC;
+    waitingPiece.body.wakeUp();
+    fallingPiece = waitingPiece;
+    waitingPiece = null;
+}
 //─── Point de spawn ─────────────────────────────────────────────────────────────────────
 var spawnPointPosition = new Vec3(0, CEIL + 5, 0);
 //─── Monde physique ─────────────────────────────────────────────────────────────────────
@@ -169,6 +184,7 @@ function createPiece(config) {
     var physMat = new Material();
     var body = new Body({
         mass: config.mass,
+        type: Body.KINEMATIC, // Ne bouge pas tant qu'elle n'est pas "réveillée"
         material: physMat,
         shape: buildPhysicsShape(config),
         sleepTimeLimit: 0.1,
@@ -313,12 +329,9 @@ function init() {
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
     });
+    // On crée une nouvelle pièce dès que l'on cliclk
     window.addEventListener('click', function () {
-        if (!fallingPiece)
-            return;
-        stackedPieces.push(fallingPiece);
-        fallingPiece = null;
-        lastSpawnTime = clock.getElapsedTime() - spawnInterval; // spawn immediately
+        releasePiece();
     });
     // On crée nos objets
     createFloor(-5); // Le sol
@@ -340,9 +353,20 @@ function render() {
         });
         piecesToBreak = [];
     }
-    if (!fallingPiece && currentTime - lastSpawnTime >= spawnInterval) {
-        fallingPiece = createPiece(PIECES[currentPiece]);
+    // Créer une pièce en attente si aucune n'existe
+    if (!waitingPiece && !fallingPiece) {
+        createWaitingPiece();
     }
+    // Auto-release après le timer
+    if (waitingPiece && clock.getElapsedTime() - waitingPieceSpawnTime >= spawnInterval) {
+        releasePiece();
+    }
+    // La pièce en attente suit le spawn point
+    if (waitingPiece) {
+        waitingPiece.body.position.copy(spawnPointPosition);
+        waitingPiece.group.position.copy(waitingPiece.body.position);
+    }
+    // La pièce qui tombe suit la physique normalement
     if (fallingPiece) {
         fallingPiece.group.position.copy(fallingPiece.body.position);
         fallingPiece.group.quaternion.copy(fallingPiece.body.quaternion);
@@ -400,21 +424,5 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
-}
-function loadData() {
-    new GLTFLoader()
-        .setPath('assets/models/')
-        .load('test.glb', gltfReader);
-}
-function gltfReader(gltf) {
-    var testModel = null;
-    testModel = gltf.scene;
-    if (testModel != null) {
-        console.log("Model loaded:  " + testModel);
-        scene.add(gltf.scene);
-    }
-    else {
-        console.log("Load FAILED.  ");
-    }
 }
 //# sourceMappingURL=main.js.map
