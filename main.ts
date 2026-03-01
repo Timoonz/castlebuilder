@@ -54,12 +54,13 @@ let camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1
 let renderer = new WebGLRenderer({ antialias: true });
 
 // ─── Gestion du ceiling ───────────────────────────────────────────────
-let CEIL = 10
+let CEIL = 10;
 const CEIL_INCREMENT = 10;
 const piecesAboveCeil = new Set<Body>();
 
 // ─── Gestion des niveaux ───────────────────────────────────────────────
-const LEVEL_STEP = 20;
+// const LEVEL_STEP = 20;
+let pieceColor = 0x8e44ad;
 
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 const ORBIT_RADIUS = Math.sqrt(2800);
@@ -271,7 +272,7 @@ function breakPiece(piece: { group: Group, body: Body, physMat: Material }) {
 function createPiece(config: PieceConfig) {
   // côté Three.js 
   const group = new Group();
-  const mesh = new Mesh(buildGeometry(config), new MeshStandardMaterial({ color: config.color }));
+  const mesh = new Mesh(buildGeometry(config), new MeshStandardMaterial({ color: pieceColor }));
   mesh.castShadow = true;
   group.add(mesh);
   scene.add(group);
@@ -334,7 +335,6 @@ function createPiece(config: PieceConfig) {
 
   return { group, body, physMat };
 }
-
 
 //  ─── SpawnPoint ─────────────────────────────────────────────────────────────────
 function createSpawnPoint() {
@@ -407,7 +407,20 @@ function createFloor(y: number) {
   physicsWorld.addBody(floorBody);
 }
 
+// ─── Fonction de level up ─────────────────────────────────────────────────────────────────
+function randomColor(): number {
+  return crypto.getRandomValues(new Uint8Array(3)).reduce((acc, val) => (acc << 8) | val, 0);
+}
 
+
+function levelUp() {
+  CEIL += CEIL_INCREMENT;
+  spawnPointPosition.y += CEIL_INCREMENT;
+  synthManager.play('levelUp');
+  pieceColor = randomColor();
+}
+
+//  ─── Fonction d'initialisation de la scène ─────────────────────────────────────────────────────────────────
 function init() {
 
   const container = document.getElementById('container');
@@ -415,12 +428,11 @@ function init() {
   // On met la caméra à son état normal en début de partie
   resetCamera();
 
-  // camera.position.set(10, 30, 50);
-
   scene = new Scene();
   scene.background = new Color().setHSL(0.6, 0, 1);
   scene.fog = new Fog(scene.background, 1, 5000);
 
+  // Lumières !
   const ambientLight = new AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
 
@@ -433,14 +445,13 @@ function init() {
   topLight.shadow.camera.far = 50;
   scene.add(topLight);
 
-
-  // Le renderer
+  // Le renderer 
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   container!.appendChild(renderer.domElement);
 
-
+  // La boucle de postprocessing
   composer = new EffectComposer(renderer);
   const renderPixelatedPass = new RenderPixelatedPass(6, scene, camera);
   composer.addPass(renderPixelatedPass);
@@ -455,11 +466,7 @@ function init() {
     if (event.key === 'ArrowDown') spawnPointPosition.z += 1;
     if (event.key === 'ArrowLeft') spawnPointPosition.x += - 1;
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
-
-    // updateSpawnPoint(scene.getObjectByName("spawnPoint"));
-
   });
-
 
   // On crée nos objets
   createFloor(-5); // Le sol
@@ -468,6 +475,7 @@ function init() {
 
 }
 
+//  ─── Boucle de rendering ─────────────────────────────────────────────────────────────────
 function render() {
   physicsWorld.fixedStep();
 
@@ -507,8 +515,7 @@ function render() {
   stackedPieces.forEach(({ body }) => {
     if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
       piecesAboveCeil.add(body);
-      CEIL += CEIL_INCREMENT;
-      spawnPointPosition.y += CEIL_INCREMENT;
+      levelUp();
     }
   });
 
@@ -543,12 +550,14 @@ function render() {
   requestAnimationFrame(render);
 }
 
+
 const startScreen = document.getElementById('start-screen')!;
 const playBtn = document.getElementById('play-btn')!;
+
 init();
 
 playBtn.addEventListener('click', () => {
-  startScreen.style.display = 'none'; // Hide the overlay
+  startScreen.style.display = 'none'; // On enlève l'écran "startgame"
   render();
 }, { once: true });
 

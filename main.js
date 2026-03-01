@@ -16,7 +16,8 @@ var CEIL = 10;
 var CEIL_INCREMENT = 10;
 var piecesAboveCeil = new Set();
 // ─── Gestion des niveaux ───────────────────────────────────────────────
-var LEVEL_STEP = 20;
+// const LEVEL_STEP = 20;
+var pieceColor = 0x8e44ad;
 // ─── Contrôles de la caméra ───────────────────────────────────────────────
 var ORBIT_RADIUS = Math.sqrt(2800);
 var cameraAngle = Math.atan2(10, 50);
@@ -160,7 +161,7 @@ function breakPiece(piece) {
 function createPiece(config) {
     // côté Three.js 
     var group = new Group();
-    var mesh = new Mesh(buildGeometry(config), new MeshStandardMaterial({ color: config.color }));
+    var mesh = new Mesh(buildGeometry(config), new MeshStandardMaterial({ color: pieceColor }));
     mesh.castShadow = true;
     group.add(mesh);
     scene.add(group);
@@ -261,14 +262,25 @@ function createFloor(y) {
     floorBody.quaternion.set(floor.quaternion.x, floor.quaternion.y, floor.quaternion.z, floor.quaternion.w);
     physicsWorld.addBody(floorBody);
 }
+// ─── Fonction de level up ─────────────────────────────────────────────────────────────────
+function randomColor() {
+    return crypto.getRandomValues(new Uint8Array(3)).reduce(function (acc, val) { return (acc << 8) | val; }, 0);
+}
+function levelUp() {
+    CEIL += CEIL_INCREMENT;
+    spawnPointPosition.y += CEIL_INCREMENT;
+    synthManager.play('levelUp');
+    pieceColor = randomColor();
+}
+//  ─── Fonction d'initialisation de la scène ─────────────────────────────────────────────────────────────────
 function init() {
     var container = document.getElementById('container');
     // On met la caméra à son état normal en début de partie
     resetCamera();
-    // camera.position.set(10, 30, 50);
     scene = new Scene();
     scene.background = new Color().setHSL(0.6, 0, 1);
     scene.fog = new Fog(scene.background, 1, 5000);
+    // Lumières !
     var ambientLight = new AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     var topLight = new PointLight(0xffffff, 500);
@@ -279,11 +291,12 @@ function init() {
     topLight.shadow.camera.near = 0.5;
     topLight.shadow.camera.far = 50;
     scene.add(topLight);
-    // Le renderer
+    // Le renderer 
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
+    // La boucle de postprocessing
     composer = new EffectComposer(renderer);
     var renderPixelatedPass = new RenderPixelatedPass(6, scene, camera);
     composer.addPass(renderPixelatedPass);
@@ -299,13 +312,13 @@ function init() {
             spawnPointPosition.x += -1;
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
-        // updateSpawnPoint(scene.getObjectByName("spawnPoint"));
     });
     // On crée nos objets
     createFloor(-5); // Le sol
     createSpawnPoint(); // Le point de spawn
     createPlatform(0, -2, 0, 24, 1, 24); // La petite plateforme
 }
+//  ─── Boucle de rendering ─────────────────────────────────────────────────────────────────
 function render() {
     physicsWorld.fixedStep();
     var currentTime = clock.getElapsedTime();
@@ -338,8 +351,7 @@ function render() {
         var body = _a.body;
         if (body.position.y > CEIL && !piecesAboveCeil.has(body)) {
             piecesAboveCeil.add(body);
-            CEIL += CEIL_INCREMENT;
-            spawnPointPosition.y += CEIL_INCREMENT;
+            levelUp();
         }
     });
     // ─── Gestion des débris ──────────────────────────────────────
@@ -372,7 +384,7 @@ var startScreen = document.getElementById('start-screen');
 var playBtn = document.getElementById('play-btn');
 init();
 playBtn.addEventListener('click', function () {
-    startScreen.style.display = 'none'; // Hide the overlay
+    startScreen.style.display = 'none'; // On enlève l'écran "startgame"
     render();
 }, { once: true });
 window.addEventListener('resize', onWindowResize, false);
