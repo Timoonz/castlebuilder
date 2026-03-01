@@ -40,22 +40,7 @@ import { SynthManager } from "./src/SynthManager";
 //─── Temps ─────────────────────────────────────────────────────────────────────
 const clock = new Clock();
 let lastSpawnTime = 0;
-const spawnInterval = 5;
-
-// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
-let livesCount = 3;
-let isPaused = false;
-
-function checkGameOver() {
-  if (livesCount <= 0 && !isPaused) gameOver();
-  else return;
-};
-
-function gameOver() {
-  isPaused = true;
-  synthManager.play('gameOver');
-};
-
+let spawnInterval: number;
 
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 let scene: Scene<Object3DEventMap>;
@@ -226,12 +211,67 @@ let physicsWorld = new World({
 const floorPhysMaterial = new Material();
 
 // Piece ↔ platform
-const PieceToFloorBounciness = 0.2;
-const PieceToFloorFriction = 0.1;
+let PieceToFloorBounciness: number;
+let PieceToFloorFriction: number;
 
 // Piece ↔ piece
-const PieceToPieceBounciness = 0.2;
-const PieceToPieceFriction = 0.5;
+let PieceToPieceBounciness: number;
+let PieceToPieceFriction: number;
+
+
+// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
+let livesCount: number;
+let isPaused = false;
+
+function checkGameOver() {
+  if (livesCount !== Infinity && livesCount <= 0 && !isPaused) gameOver();
+  else return;
+};
+
+function gameOver() {
+  isPaused = true;
+  synthManager.play('gameOver');
+};
+
+// ─── Config de la difficulté ────────────────────────────────────────────────────────
+type Difficulty = 'easy' | 'medium' | 'hard' | 'endless';
+
+interface DifficultyConfig {
+  lives: number;
+  spawnInterval: number;
+  floorBounciness: number;       // piece ↔ floor bounciness
+  floorFriction: number;         // piece ↔ floor friction
+  pieceBounciness: number;       // piece ↔ piece bounciness
+  pieceFriction: number;         // piece ↔ piece friction
+}
+
+const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
+  //            lives  spawn  floorB floorF pieceB pieceF
+  easy: { lives: 5, spawnInterval: 7, floorBounciness: 0.1, floorFriction: 0.6, pieceBounciness: 0.1, pieceFriction: 0.8 },
+  medium: { lives: 3, spawnInterval: 5, floorBounciness: 0.2, floorFriction: 0.1, pieceBounciness: 0.2, pieceFriction: 0.5 },
+  hard: { lives: 3, spawnInterval: 3, floorBounciness: 0.24, floorFriction: 0.05, pieceBounciness: 0.25, pieceFriction: 0.2 },
+  endless: { lives: Infinity, spawnInterval: 2.5, floorBounciness: 0.2, floorFriction: 0.1, pieceBounciness: 0.2, pieceFriction: 0.5 },
+};
+
+const startScreen = document.getElementById('start-screen')!;
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const difficulty = (btn as HTMLElement).dataset.difficulty as Difficulty;
+    const cfg = DIFFICULTY_CONFIG[difficulty];
+
+    livesCount = cfg.lives;
+    spawnInterval = cfg.spawnInterval;
+    PieceToFloorBounciness = cfg.floorBounciness;
+    PieceToFloorFriction = cfg.floorFriction;
+    PieceToPieceBounciness = cfg.pieceBounciness;
+    PieceToPieceFriction = cfg.pieceFriction;
+    startScreen.style.display = 'none';
+    render();
+  }, { once: true });
+});
+
+
 
 // ─── Helper: build Three.js geometry from config ──────────────────────────────
 function buildGeometry(config: PieceConfig): BufferGeometry {
@@ -632,7 +672,6 @@ function render() {
 }
 
 
-const startScreen = document.getElementById('start-screen')!;
 const playBtn = document.getElementById('play-btn')!;
 
 init();

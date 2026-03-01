@@ -8,22 +8,7 @@ import { SynthManager } from "./src/SynthManager";
 //─── Temps ─────────────────────────────────────────────────────────────────────
 var clock = new Clock();
 var lastSpawnTime = 0;
-var spawnInterval = 5;
-// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
-var livesCount = 3;
-var isPaused = false;
-function checkGameOver() {
-    if (livesCount <= 0 && !isPaused)
-        gameOver();
-    else
-        return;
-}
-;
-function gameOver() {
-    isPaused = true;
-    synthManager.play('gameOver');
-}
-;
+var spawnInterval;
 // ─── Caméra / scène / renderer ───────────────────────────────────────────────
 var scene;
 var composer;
@@ -64,9 +49,9 @@ function updateCameraOrbit() {
     }
     else {
         // Sin on appuie sur 'q' ou 'd', ou bouge à gauche/droite sur le cercle
-        if (keysDown['ArrowLeft'])
+        if (keysDown['q'])
             cameraAngle -= CAMERA_SPEED;
-        if (keysDown['ArrowRight'])
+        if (keysDown['d'])
             cameraAngle += CAMERA_SPEED;
         resetCamera();
     }
@@ -151,11 +136,48 @@ var physicsWorld = new World({
 // ─── Matériaux physiques ───────────────────────────────────────────────────────
 var floorPhysMaterial = new Material();
 // Piece ↔ platform
-var PieceToFloorBounciness = 0.2;
-var PieceToFloorFriction = 0.1;
+var PieceToFloorBounciness;
+var PieceToFloorFriction;
 // Piece ↔ piece
-var PieceToPieceBounciness = 0.2;
-var PieceToPieceFriction = 0.5;
+var PieceToPieceBounciness;
+var PieceToPieceFriction;
+// ─── Gestion du nombre de vies ─────────────────────────────────────────────────────────────────────
+var livesCount;
+var isPaused = false;
+function checkGameOver() {
+    if (livesCount !== Infinity && livesCount <= 0 && !isPaused)
+        gameOver();
+    else
+        return;
+}
+;
+function gameOver() {
+    isPaused = true;
+    synthManager.play('gameOver');
+}
+;
+var DIFFICULTY_CONFIG = {
+    //            lives  spawn  floorB floorF pieceB pieceF
+    easy: { lives: 5, spawnInterval: 7, floorBounciness: 0.1, floorFriction: 0.6, pieceBounciness: 0.1, pieceFriction: 0.8 },
+    medium: { lives: 3, spawnInterval: 5, floorBounciness: 0.2, floorFriction: 0.1, pieceBounciness: 0.2, pieceFriction: 0.5 },
+    hard: { lives: 3, spawnInterval: 3, floorBounciness: 0.24, floorFriction: 0.05, pieceBounciness: 0.25, pieceFriction: 0.2 },
+    endless: { lives: Infinity, spawnInterval: 2.5, floorBounciness: 0.2, floorFriction: 0.1, pieceBounciness: 0.2, pieceFriction: 0.5 },
+};
+var startScreen = document.getElementById('start-screen');
+document.querySelectorAll('.diff-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var difficulty = btn.dataset.difficulty;
+        var cfg = DIFFICULTY_CONFIG[difficulty];
+        livesCount = cfg.lives;
+        spawnInterval = cfg.spawnInterval;
+        PieceToFloorBounciness = cfg.floorBounciness;
+        PieceToFloorFriction = cfg.floorFriction;
+        PieceToPieceBounciness = cfg.pieceBounciness;
+        PieceToPieceFriction = cfg.pieceFriction;
+        startScreen.style.display = 'none';
+        render();
+    }, { once: true });
+});
 // ─── Helper: build Three.js geometry from config ──────────────────────────────
 function buildGeometry(config) {
     var s = config.size;
@@ -359,9 +381,9 @@ function init() {
     composer.addPass(outputPass);
     // Contrôles du spawn point
     window.addEventListener('keydown', function (event) {
-        if (event.key === 'q')
+        if (event.key === 'ArrowLeft')
             spawnPointPosition.x += -1;
-        if (event.key === 'd')
+        if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
         spawnPointPosition.x = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.x));
         spawnPointPosition.z = Math.max(-PLATFORM_DIM / 2, Math.min(PLATFORM_DIM / 2, spawnPointPosition.z));
@@ -461,7 +483,6 @@ function render() {
     composer.render();
     requestAnimationFrame(render);
 }
-var startScreen = document.getElementById('start-screen');
 var playBtn = document.getElementById('play-btn');
 init();
 playBtn.addEventListener('click', function () {
