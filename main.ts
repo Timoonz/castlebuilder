@@ -468,6 +468,18 @@ function init() {
     if (event.key === 'ArrowRight') spawnPointPosition.x += 1;
   });
 
+  window.addEventListener('click', () => {
+    if (!fallingPiece) {
+      lastSpawnTime = clock.getElapsedTime() - spawnInterval;
+
+    }
+
+    stackedPieces.push(fallingPiece);
+    (fallingPiece as any) = null;
+    lastSpawnTime = clock.getElapsedTime() - spawnInterval; // spawn immediately
+  });
+
+
   // On crée nos objets
   createFloor(-5); // Le sol
   createSpawnPoint(); // Le point de spawn
@@ -571,25 +583,3 @@ function onWindowResize() {
   composer.setSize(window.innerWidth, window.innerHeight);
 }
 
-
-
-function loadData() {
-  new GLTFLoader()
-    .setPath('assets/models/')
-    .load('test.glb', gltfReader);
-}
-
-function gltfReader(gltf: GLTF) {
-  let testModel = null;
-
-  testModel = gltf.scene;
-
-  if (testModel != null) {
-    console.log("Model loaded:  " + testModel);
-    scene.add(gltf.scene);
-  } else {
-    console.log("Load FAILED.  ");
-  }
-}
-
-// loadData();

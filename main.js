@@ -313,6 +313,13 @@ function init() {
         if (event.key === 'ArrowRight')
             spawnPointPosition.x += 1;
     });
+    window.addEventListener('click', function () {
+        if (!fallingPiece)
+            return;
+        stackedPieces.push(fallingPiece);
+        fallingPiece = null;
+        lastSpawnTime = clock.getElapsedTime() - spawnInterval; // spawn immediately
+    });
     // On crée nos objets
     createFloor(-5); // Le sol
     createSpawnPoint(); // Le point de spawn
